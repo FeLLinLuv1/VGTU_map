@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:fillViewport="true">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="16dp">
+
+        <!-- Поле ввода группы -->
+        <com.google.android.material.textfield.TextInputLayout
+            android:id="@+id/groupInputLayout"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            app:endIconMode="clear_text"
+            app:layout_constraintEnd_toStartOf="@+id/saveGroupButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent">
+
+            <com.google.android.material.textfield.TextInputEditText
+                android:id="@+id/groupEditText"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:hint="ФИО преподавателя"
+                android:inputType="textCapCharacters" />
+        </com.google.android.material.textfield.TextInputLayout>
+
+        <!-- Кнопка "Сохранить группу" -->
+        <Button
+            android:id="@+id/saveGroupButton"
+            style="@style/Widget.AppCompat.Button.Colored"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Сохранить"
+            app:layout_constraintBaseline_toBaselineOf="@id/groupInputLayout"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Блок расписания -->
+        <TextView
+            android:id="@+id/dateHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Пятница, 12 мая"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintTop_toBottomOf="@id/groupInputLayout" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/scheduleRecyclerView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            app:layout_constraintTop_toBottomOf="@id/dateHeader" />
+
+        <!-- Горизонтальные табы для дней -->
+
+        <Button
+            android:id="@+id/todayButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="170dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:text="Сегодня"
+            app:layout_constraintBottom_toTopOf="@+id/weekButton"
+            app:layout_constraintEnd_toStartOf="@+id/tomorrowButton"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <Button
+            android:id="@+id/tomorrowButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="170dp"
+            android:layout_marginTop="16dp"
+            android:layout_height="wrap_content"
+            android:text="Завтра"
+            app:layout_constraintBottom_toTopOf="@+id/weekButton"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/todayButton" />
+
+        <!-- Аналогично для "Послезавтра", "Через 2 дня" -->
+
+
+        <!-- Кнопки "Неделя", "Преподаватели", "Карта" -->
+
+        <Button
+            android:id="@+id/weekButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="На неделю"
+            android:layout_marginTop="8dp"
+            app:layout_constraintBottom_toTopOf="@+id/nextWeekButton"/>
+
+        <Button
+            android:id="@+id/nextWeekButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Следующая неделя"
+            app:layout_constraintBottom_toTopOf="@+id/studentButton" />
+
+        <Button
+            android:id="@+id/studentButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="Расписание студентов"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
