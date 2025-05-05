@@ -9,10 +9,6 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -51,33 +47,8 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
             listener.onError("Название группы не указано.");
             return null;
         }
-
-        // Новый способ: ищем Excel-файл на сайте
-        String schedulePageUrl = "https://cchgeu.ru/studentu/schedule/"; // если другая страница — поменяй
-        String excelUrl = null;
-        try {
-            Document doc = Jsoup.connect(schedulePageUrl).get();
-            // Ищем все ссылки на Excel-файлы
-            Elements links = doc.select("a[href$=.xlsx], a[href$=.xls]");
-            for (Element link : links) {
-                String href = link.absUrl("href");
-                if (href.toLowerCase().contains(targetGroupName.toLowerCase())) {
-                    excelUrl = href;
-                    break;
-                }
-            }
-        } catch (Exception e) {
-            listener.onError("Ошибка поиска Excel-файла на сайте: " + e.getMessage());
-            return null;
-        }
-
-        if (excelUrl == null) {
-            listener.onError("Excel-файл для группы не найден на сайте.");
-            return null;
-        }
-
-        // Теперь скачиваем и парсим найденный файл
-        return downloadAndParseExcel(excelUrl);
+        String fileUrl = baseUrl + targetGroupName.toLowerCase(Locale.getDefault()) + fileSuffix;
+        return downloadAndParseExcel(fileUrl);
     }
 
     private List<String> downloadAndParseExcel(String fileUrl) {
@@ -177,9 +148,7 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
                     }
                 }
             } else {
-                int code = connection.getResponseCode();
-                Log.e(TAG, "HTTP response code: " + code);
-                listener.onError("Ошибка загрузки файла расписания. Код: " + code);
+                listener.onError("Ошибка загрузки файла расписания. Код: " + connection.getResponseCode());
                 return null;
             }
         } catch (IOException e) {
