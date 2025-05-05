@@ -65,12 +65,12 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
                     @Override
                     public void run() {
                         if (downloadedFile != null) {
-                            List<List<String>> scheduleData = ExcelParser.parseSchedule(downloadedFile);
+                            String todaysSchedule = ExcelParser.parseScheduleForToday(downloadedFile);
                             // После парсинга передаем данные обратно в UI-поток для отображения
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    displaySchedule(scheduleData);
+                                    scheduleTextView.setText(todaysSchedule);
                                 }
                             });
                         } else {
