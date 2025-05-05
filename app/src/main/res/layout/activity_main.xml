@@ -14,7 +14,7 @@
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/facultyInputLayout"
-             android:layout_width="0dp"
+            android:layout_width="0dp"
             android:layout_height="60dp"
             android:hint="Факультет"
             app:layout_constraintStart_toStartOf="parent"
@@ -157,8 +157,8 @@
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/scheduleRecyclerView"
-            android:layout_width="373dp"
-            android:layout_height="28dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
@@ -166,27 +166,27 @@
 
         <TextView
             android:id="@+id/scheduleTextView"
-            android:layout_width="386dp"
-            android:layout_height="240dp"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:text="Здесь будет отображено расписание"
+            android:scrollbars="vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/scheduleRecyclerView" />
 
         <Button
             android:id="@+id/teachersButton"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="Расписание преподавателей"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintHorizontal_bias="0.0"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/scheduleTextView" />
 
         <Button
             android:id="@+id/mapButton"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="Карта аудиторий"
             app:layout_constraintTop_toBottomOf="@+id/teachersButton"
@@ -196,15 +196,17 @@
 
         <Button
             android:id="@+id/feedbackButton"
-            android:layout_width="match_parent"
+            style="?android:attr/borderlessButtonStyle"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:enabled="false"
             android:text="Обратная связь"
             android:textColor="@color/gray"
-            style="?android:attr/borderlessButtonStyle"
-            app:layout_constraintTop_toBottomOf="@+id/mapButton"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/mapButton" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
