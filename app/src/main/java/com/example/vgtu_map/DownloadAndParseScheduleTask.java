@@ -58,18 +58,21 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
         InputStream inputStream = null;
         Workbook workbook = null;
 
-        // Дата начала учебного года (необходимо заменить на фактическую дату)
-        LocalDate academicYearStart = LocalDate.of(2024, 9, 1);
+        // Исправленный расчёт даты начала учебного года
         LocalDate currentDate = LocalDate.now();
+        LocalDate academicYearStart;
+        if (currentDate.getMonthValue() < 9) {
+            academicYearStart = LocalDate.of(currentDate.getYear() - 1, 9, 1);
+        } else {
+            academicYearStart = LocalDate.of(currentDate.getYear(), 9, 1);
+        }
 
-        // Рассчитываем номер недели от начала учебного года (приблизительно)
-        long weeksSinceStart = ChronoUnit.WEEKS.between(academicYearStart, currentDate) + 1;
-        boolean isNumerator = (weeksSinceStart % 2 != 0); // Нечетная неделя - числитель
-        // Форматируем текущую дату для получения названия дня недели на русском
+        long weeksSinceStart = Math.max(0, ChronoUnit.WEEKS.between(academicYearStart, currentDate) + 1);
+        boolean isNumerator = (weeksSinceStart % 2 != 0);
+
         DateTimeFormatter dayFormatter = DateTimeFormatter.ofPattern("EEEE", new Locale("ru", "RU"));
         String today = currentDate.format(dayFormatter);
         today = today.substring(0, 1).toUpperCase() + today.substring(1);
-        int currentDayOfWeekNumber = currentDate.getDayOfWeek().getValue();
 
         try {
             URL url = new URL(fileUrl);
@@ -95,14 +98,12 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
 
                 if (workbook != null) {
                     Sheet sheet = workbook.getSheetAt(0);
-                    // Предполагаем, что расписание начинается с определенной строки и столбца
-                    // Вам нужно будет адаптировать эти значения на основе структуры вашего Excel-файла
-                    int startRow = 3; // Пример: строка, с которой начинаются дни недели
-                    int dayColumn = 0; // Пример: столбец с названиями дней недели
-                    int timeColumn = 1; // Пример: столбец со временем
-                    int subjectStartColumn = 3; // Пример: первый столбец с названием предмета
-                    int subjectEndColumn = 6; // Пример: последний столбец с названием предмета (объединение)
-                    int audienceColumn = 7; // Пример: столбец с аудиторией
+                    int startRow = 3;
+                    int dayColumn = 0;
+                    int timeColumn = 1;
+                    int subjectStartColumn = 3;
+                    int subjectEndColumn = 6;
+                    int audienceColumn = 7;
 
                     for (int rowNum = startRow; rowNum <= sheet.getLastRowNum(); rowNum += 2) {
                         Row dayOfWeekRow = sheet.getRow(rowNum - 1);
@@ -147,15 +148,22 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
                     }
                 }
             } else {
-                listener.onError("Ошибка загрузки файла расписания.");
+                listener.onError("Ошибка загрузки файла расписания. Код: " + connection.getResponseCode());
                 return null;
             }
         } catch (IOException e) {
             Log.e(TAG, "Ошибка при загрузке или парсинге Excel файла: " + e.getMessage());
-            listener.onError("Ошибка при обработке файла расписания.");
+            listener.onError("Ошибка при обработке файла расписания: " + e.getMessage());
+            return null;
+        } catch (Exception e) {
+            Log.e(TAG, "Неизвестная ошибка: " + e.getMessage());
+            listener.onError("Неизвестная ошибка: " + e.getMessage());
             return null;
         } finally {
-            // ... (блок finally оставлен без изменений)
+            try {
+                if (inputStream != null) inputStream.close();
+                if (connection != null) connection.disconnect();
+            } catch (Exception ignored) {}
         }
         return scheduleForToday;
     }
