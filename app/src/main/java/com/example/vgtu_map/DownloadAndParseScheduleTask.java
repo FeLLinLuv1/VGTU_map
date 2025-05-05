@@ -210,7 +210,7 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
         }
     }
 
-    @Overrideg
+    @Override
     protected void onCancelled() {
         super.onCancelled();
         Log.i(TAG, "Задача загрузки и парсинга отменена");
