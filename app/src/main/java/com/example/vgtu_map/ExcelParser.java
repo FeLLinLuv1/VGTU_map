@@ -20,17 +20,31 @@ public class ExcelParser {
     private static final String TAG = "ExcelParser";
 
     public static String parseScheduleForToday(File file) {
-        Log.d(TAG, "--- Начало обработки расписания ---");
-        StringBuilder scheduleToday = new StringBuilder("Расписание на сегодня:\n");
+        Log.d(TAG, "--- Начало обработки расписания на сегодня ---");
+        return parseScheduleForDay(file, 0); // 0 - смещение для текущего дня
+    }
+
+    public static String parseScheduleForTomorrow(File file) {
+        Log.d(TAG, "--- Начало обработки расписания на завтра ---");
+        return parseScheduleForDay(file, 1); // 1 - смещение для следующего дня
+    }
+    public static String parseScheduleForAfterTomorrow(File file) {
+        Log.d(TAG, "--- Начало обработки расписания на послезавтра ---");
+        return parseScheduleForDay(file, 2); // 2 - смещение для следующего дня
+    }
+
+    private static String parseScheduleForDay(File file, int dayOffset) {
+        StringBuilder scheduleForDay = new StringBuilder();
         FileInputStream fis = null;
         Workbook workbook = null;
 
         Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_WEEK, dayOffset); // Прибавляем смещение к текущему дню
         int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
-        String todayName = getDayName(dayOfWeek).toUpperCase(Locale.getDefault());
+        String dayName = getDayName(dayOfWeek).toUpperCase(Locale.getDefault());
         boolean isNumeratorWeek = isNumeratorWeek();
 
-        Log.d(TAG, "Сегодня: " + todayName + ", Неделя числителя: " + isNumeratorWeek);
+        Log.d(TAG, "Выбранный день: " + dayName + ", Неделя числителя: " + isNumeratorWeek + ", Смещение: " + dayOffset);
 
         try {
             fis = new FileInputStream(file);
@@ -50,9 +64,9 @@ public class ExcelParser {
                     Cell dayCell = currentRow.getCell(0);
 
                     if (!foundDay) {
-                        if (dayCell != null && dayCell.getCellType() == CellType.STRING && dayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(todayName)) {
+                        if (dayCell != null && dayCell.getCellType() == CellType.STRING && dayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(dayName)) {
                             foundDay = true;
-                            Log.d(TAG, "Найдена строка с днем: " + currentRow.getRowNum());
+                            Log.d(TAG, "Найдена строка с днем: " + currentRow.getRowNum() + " (" + dayName + ")");
                         }
                     } else if (foundDay) {
                         Log.d(TAG, "Обрабатываем строку " + currentRow.getRowNum());
@@ -69,57 +83,47 @@ public class ExcelParser {
                                 Cell subject1Cell = currentRow.getCell(3);
                                 String subject1 = extractSubjectName(getStringCellValue(subject1Cell));
                                 String room1 = getStringCellValue(currentRow.getCell(4));
-
                                 Cell subject2Cell = currentRow.getCell(5);
                                 String subject2 = extractSubjectName(getStringCellValue(subject2Cell));
                                 String room2 = getStringCellValue(currentRow.getCell(6));
+                                String room3 = getStringCellValue(currentRow.getCell(7));
 
-                                Log.d(TAG, "Проверка числителя/знаменателя (текущая строка " + currentRow.getRowNum() + "): Неделя числителя - " + isNumeratorWeek + ", Предмет 1 - " + !subject1.isEmpty() + ", Предмет 2 - " + !subject2.isEmpty());
                                 if (isNumeratorWeek) {
-                                    if (!subject1.isEmpty()) {
-                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, строка " + currentRow.getRowNum() + ", числитель)"));
+                                    Log.d(TAG, "Проверка числителя/знаменателя (текущая строка " + currentRow.getRowNum() + "): Неделя числителя - " + isNumeratorWeek + ", Предмет 1 - " + !subject1.isEmpty() + ", Предмет 2 - " + !subject2.isEmpty());
+                                    if (!subject1.isEmpty() && room3.isEmpty()) {
+                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, числитель)"));
+                                    }
+                                    if (!subject1.isEmpty() && !room3.isEmpty()) {
+                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1, room3, " (числитель)"));
                                     }
                                     if (!subject2.isEmpty()) {
-                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, строка " + currentRow.getRowNum() + ", числитель)"));
+                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, числитель)"));
                                     }
                                 } else {
-                                    if (!subject1.isEmpty()) {
-                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, строка " + currentRow.getRowNum() + ", знаменатель)"));
-                                    }
-                                    if (!subject2.isEmpty()) {
-                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, строка " + currentRow.getRowNum() + ", знаменатель)"));
-                                    }
-                                }
+                                    // Проверяем следующую строку ДЛЯ ТОЙ ЖЕ ВРЕМЕННОЙ ПАРЫ, НО ДЛЯ ДРУГОЙ НЕДЕЛИ
+                                    if (rowIterator.hasNext()) {
+                                        Row nextRow = rowIterator.next();
+                                        Cell nextTimeCell = nextRow.getCell(1);
 
-                                // Проверяем следующую строку ДЛЯ ТОЙ ЖЕ ВРЕМЕННОЙ ПАРЫ, НО ДЛЯ ДРУГОЙ НЕДЕЛИ
-                                if (rowIterator.hasNext()) {
-                                    Row nextRow = rowIterator.next();
-                                    Cell nextTimeCell = nextRow.getCell(1);
+                                        // ЕСЛИ В СЛЕДУЮЩЕЙ СТРОКЕ ВРЕМЯ НЕ УКАЗАНО, ЗНАЧИТ ЭТО РАСПИСАНИЕ НА ДРУГУЮ НЕДЕЛЮ
+                                        if (nextTimeCell == null || nextTimeCell.getCellType() == CellType.BLANK || getStringCellValue(nextTimeCell).trim().isEmpty()) {
+                                            Log.d(TAG, "Следующая строка (" + nextRow.getRowNum() + ") - нет времени. Обрабатываем как другую неделю для той же пары.");
+                                            Cell subject1NextRowCell = nextRow.getCell(3);
+                                            String subject1NextRow = extractSubjectName(getStringCellValue(subject1NextRowCell));
+                                            String room1NextRow = getStringCellValue(nextRow.getCell(4));
+                                            Cell subject2NextRowCell = nextRow.getCell(5);
+                                            String subject2NextRow = extractSubjectName(getStringCellValue(subject2NextRowCell));
+                                            String room2NextRow = getStringCellValue(nextRow.getCell(6));
+                                            String room3NextRow = getStringCellValue(nextRow.getCell(7));
 
-                                    // ЕСЛИ В СЛЕДУЮЩЕЙ СТРОКЕ ВРЕМЯ НЕ УКАЗАНО, ЗНАЧИТ ЭТО РАСПИСАНИЕ НА ДРУГУЮ НЕДЕЛЮ
-                                    if (nextTimeCell == null || nextTimeCell.getCellType() == CellType.BLANK || getStringCellValue(nextTimeCell).trim().isEmpty()) {
-                                        Log.d(TAG, "Следующая строка (" + nextRow.getRowNum() + ") - нет времени. Обрабатываем как другую неделю для той же пары.");
-                                        Cell subject1NextRowCell = nextRow.getCell(3);
-                                        String subject1NextRow = extractSubjectName(getStringCellValue(subject1NextRowCell));
-                                        String room1NextRow = getStringCellValue(nextRow.getCell(4));
-
-                                        Cell subject2NextRowCell = nextRow.getCell(5);
-                                        String subject2NextRow = extractSubjectName(getStringCellValue(subject2NextRowCell));
-                                        String room2NextRow = getStringCellValue(nextRow.getCell(6));
-
-                                        if (isNumeratorWeek) {
-                                            if (!subject1NextRow.isEmpty()) {
-                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room1NextRow, " (1 п/г, строка " + nextRow.getRowNum() + ", знаменатель)"));
+                                            if (!subject1NextRow.isEmpty() && room3NextRow.isEmpty()) {
+                                                scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room1NextRow, " (1 п/г, знаменатель)"));
                                             }
                                             if (!subject2NextRow.isEmpty()) {
-                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2NextRow, room2NextRow, " (2 п/г, строка " + nextRow.getRowNum() + ", знаменатель)"));
+                                                scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject2NextRow, room2NextRow, " (2 п/г, знаменатель)"));
                                             }
-                                        } else {
-                                            if (!subject1NextRow.isEmpty()) {
-                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room1NextRow, " (1 п/г, строка " + nextRow.getRowNum() + ", числитель)"));
-                                            }
-                                            if (!subject2NextRow.isEmpty()) {
-                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2NextRow, room2NextRow, " (2 п/г, строка " + nextRow.getRowNum() + ", числитель)"));
+                                            if (!subject1NextRow.isEmpty() && !room3NextRow.isEmpty()) {
+                                                scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room3NextRow, " (знаменатель)"));
                                             }
                                         }
                                     }
@@ -129,17 +133,21 @@ public class ExcelParser {
                             }
                         }
 
-                        // Проверка на начало следующего дня
+                        // Проверка на начало следующего дня (с учетом смещения, чтобы не выйти за пределы нужного дня)
+                        Calendar nextDayCalendar = Calendar.getInstance();
+                        nextDayCalendar.add(Calendar.DAY_OF_WEEK, dayOffset);
+                        int currentDayForCheck = nextDayCalendar.get(Calendar.DAY_OF_WEEK);
+
                         Cell nextDayCellForBreak = currentRow.getCell(0);
-                        if (nextDayCellForBreak != null && nextDayCellForBreak.getCellType() == CellType.STRING && nextDayCellForBreak.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()))) {
-                            Log.d(TAG, "Найдено начало следующего дня. Завершаем.");
+                        if (nextDayCellForBreak != null && nextDayCellForBreak.getCellType() == CellType.STRING && nextDayCellForBreak.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayName(currentDayForCheck).toUpperCase(Locale.getDefault()))) {
+                            Log.d(TAG, "Найдено начало следующего дня. Завершаем для " + dayName);
                             break;
                         }
                     }
                 }
 
-                if (scheduleToday.toString().equals("Расписание на сегодня:\n")) {
-                    scheduleToday.append("На сегодня расписаний нет.");
+                if (scheduleForDay.toString().equals("Расписание на выбранный день:\n")) {
+                    scheduleForDay.append("На этот день расписаний нет.");
                 }
 
             }
@@ -154,9 +162,9 @@ public class ExcelParser {
                 Log.e(TAG, "Ошибка закрытия файла: " + e.getMessage());
             }
         }
-        Log.d(TAG, "--- Конец обработки расписания ---");
-        Log.d(TAG, "Итоговое расписание:\n" + scheduleToday.toString());
-        return scheduleToday.toString();
+        Log.d(TAG, "--- Конец обработки расписания на " + dayName + " ---");
+        Log.d(TAG, "Итоговое расписание на " + dayName + ":\n" + scheduleForDay.toString());
+        return scheduleForDay.toString();
     }
 
     private static boolean isNumeratorWeek() {

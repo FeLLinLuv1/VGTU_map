@@ -18,8 +18,13 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
 
     private EditText groupEditText; // Поле для ввода названия группы
     private Button searchButton;
+    private Button todayButton; // Кнопка "Сегодня"
+    private Button tomorrowButton; // Кнопка "Завтра"
     private TextView scheduleTextView;
     private File downloadedFile; // Переменная для хранения скачанного файла
+    private String currentGroupName = ""; // Храним текущее название группы
+    private Button afterTomorrowButton; // Кнопка "Послезавтра"
+    private TextView dateHeader; // Добавляем TextView для заголовка даты
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -28,7 +33,11 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
 
         groupEditText = findViewById(R.id.groupEditText);
         searchButton = findViewById(R.id.saveGroupButton); // Используем прежний ID, но меняем смысл
+        todayButton = findViewById(R.id.todayButton);
+        tomorrowButton = findViewById(R.id.tomorrowButton);
         scheduleTextView = findViewById(R.id.scheduleTextView);
+        afterTomorrowButton = findViewById(R.id.afterTomorrowButton);
+        dateHeader = findViewById(R.id.dateHeader); // Инициализируем TextView заголовка
 
         searchButton.setText("Поиск расписания"); // Изменяем текст кнопки
         scheduleTextView.setText("Результат поиска расписания будет здесь"); // Начальный текст
@@ -38,6 +47,7 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
             public void onClick(View v) {
                 String enteredGroupName = groupEditText.getText().toString().trim();
                 if (!enteredGroupName.isEmpty()) {
+                    currentGroupName = enteredGroupName; // Сохраняем название группы
                     // Запускаем DownloadAndParseScheduleTask, передавая контекст и название группы
                     DownloadAndParseScheduleTask task = new DownloadAndParseScheduleTask(MainActivity.this, MainActivity.this);
                     task.execute(enteredGroupName);
@@ -48,6 +58,44 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
                 }
             }
         });
+
+        todayButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (downloadedFile != null && !currentGroupName.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Загрузка расписания на сегодня...", Toast.LENGTH_SHORT).show();
+                    loadScheduleForToday(downloadedFile);
+                } else {
+                    Toast.makeText(MainActivity.this, "Сначала выполните поиск расписания", Toast.LENGTH_LONG).show();
+                }
+                dateHeader.setText("Расписание на сегодня"); // Обновляем заголовок
+            }
+        });
+
+        tomorrowButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (downloadedFile != null && !currentGroupName.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Загрузка расписания на завтра...", Toast.LENGTH_SHORT).show();
+                    loadScheduleForTomorrow(downloadedFile);
+                } else {
+                    Toast.makeText(MainActivity.this, "Сначала выполните поиск расписания", Toast.LENGTH_LONG).show();
+                }
+                dateHeader.setText("Расписание на завтра"); // Обновляем заголовок
+            }
+        });
+        afterTomorrowButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (downloadedFile != null && !currentGroupName.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Загрузка расписания на послезавтра...", Toast.LENGTH_SHORT).show();
+                    loadScheduleForAfterTomorrow(downloadedFile);
+                } else {
+                    Toast.makeText(MainActivity.this, "Сначала выполните поиск расписания", Toast.LENGTH_LONG).show();
+                }
+                dateHeader.setText("Расписание на послезавтра"); // Обновляем заголовок
+            }
+        });
     }
 
     @Override
@@ -56,37 +104,89 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
             @Override
             public void run() {
                 Toast.makeText(MainActivity.this, "Расписание успешно скачано!", Toast.LENGTH_SHORT).show();
-                scheduleTextView.setText("Файл расписания скачан и обрабатывается...");
+                scheduleTextView.setText("Файл расписания скачан.");
                 Log.d("MainActivity", "Файл расписания скачан: " + file.getAbsolutePath());
                 downloadedFile = file; // Сохраняем скачанный файл
-
-                // Запускаем парсинг Excel в отдельном потоке
-                new Thread(new Runnable() {
-                    @Override
-                    public void run() {
-                        if (downloadedFile != null) {
-                            String todaysSchedule = ExcelParser.parseScheduleForToday(downloadedFile);
-                            // После парсинга передаем данные обратно в UI-поток для отображения
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    scheduleTextView.setText(todaysSchedule);
-                                }
-                            });
-                        } else {
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-                                    Toast.makeText(MainActivity.this, "Ошибка: Не удалось получить скачанный файл.", Toast.LENGTH_LONG).show();
-                                    scheduleTextView.setText("Ошибка: Не удалось получить скачанный файл.");
-                                }
-                            });
-                        }
-                    }
-                }).start();
+                // После скачивания сразу отображаем расписание на сегодня
+                loadScheduleForToday(downloadedFile);
             }
         });
     }
+
+    private void loadScheduleForToday(File file) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (file != null) {
+                    String todaysSchedule = ExcelParser.parseScheduleForToday(file);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            scheduleTextView.setText(todaysSchedule);
+                        }
+                    });
+                } else {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "Ошибка: Файл расписания не найден.", Toast.LENGTH_LONG).show();
+                            scheduleTextView.setText("Ошибка: Файл расписания не найден.");
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
+    private void loadScheduleForTomorrow(File file) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (file != null) {
+                    String tomorrowSchedule = ExcelParser.parseScheduleForTomorrow(file);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            scheduleTextView.setText(tomorrowSchedule);
+                        }
+                    });
+                } else {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "Ошибка: Файл расписания не найден.", Toast.LENGTH_LONG).show();
+                            scheduleTextView.setText("Ошибка: Файл расписания не найден.");
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+    private void loadScheduleForAfterTomorrow(File file) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                if (file != null) {
+                    String aftertomorrowSchedule = ExcelParser.parseScheduleForAfterTomorrow(file);
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            scheduleTextView.setText(aftertomorrowSchedule);
+                        }
+                    });
+                } else {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Toast.makeText(MainActivity.this, "Ошибка: Файл расписания не найден.", Toast.LENGTH_LONG).show();
+                            scheduleTextView.setText("Ошибка: Файл расписания не найден.");
+                        }
+                    });
+                }
+            }
+        }).start();
+    }
+
 
     private void displaySchedule(List<List<String>> data) {
         StringBuilder sb = new StringBuilder("Расписание:\n");
