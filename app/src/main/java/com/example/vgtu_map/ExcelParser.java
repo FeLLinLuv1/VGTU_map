@@ -107,13 +107,13 @@ public class ExcelParser {
                             scheduleToday.append("Аудитория: ").append(room).append("\n\n");
                         }
 
-// Обработка второй подгруппы
+                        // Обработка второй подгруппы
                         if (!startTime.isEmpty() && subjectInfoCellPg2 != null && subjectInfoCellPg2.getCellType() == CellType.STRING && !getStringCellValue(subjectInfoCellPg2).isEmpty()) {
                             Cell secondGroupSubjectCell = row.getCell(5); // Явно указываем индекс 5 для предмета/преподавателя 2 п/г
                             String subjectWithTeacher = getStringCellValue(secondGroupSubjectCell).trim();
                             String teacher = extractTeacherName(subjectWithTeacher);
                             String subjectOnly = subjectWithTeacher.replaceAll("\\s*\\([^\\)]*\\)\\s*", "");
-                            Cell secondGroupRoomCell = row.getCell(6); // Явно указываем индекс 6 для аудитории 2 п/г
+                            Cell secondGroupRoomCell = row.getCell(7); // Явно указываем индекс 7 для аудитории 2 п/г
                             String room = getStringCellValue(secondGroupRoomCell);
 
                             scheduleToday.append("Время: ").append(startTime).append(" - ").append(endTime).append(" (2 пг)\n");
