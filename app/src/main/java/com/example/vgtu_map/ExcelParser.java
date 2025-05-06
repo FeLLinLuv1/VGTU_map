@@ -2,13 +2,19 @@ package com.example.vgtu_map;
 
 import android.util.Log;
 
-import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.hssf.usermodel.HSSFFont;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
+import org.apache.poi.hssf.usermodel.HSSFPalette;
+import org.apache.poi.hssf.util.HSSFColor;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.apache.poi.xssf.usermodel.XSSFColor;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Iterator;
 import java.util.Locale;
@@ -16,6 +22,10 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ExcelParser {
+
+    private static final String TAG = "ExcelParser";
+    private static final int[] COLOR_CHISLITEL_RGB = {51, 51, 51}; // Черный
+    private static final int[] COLOR_ZNAMENATEL_RGB = {88, 113, 207}; // Синий
 
     public static String parseScheduleForToday(File file) {
         StringBuilder scheduleToday = new StringBuilder("Расписание на сегодня:\n");
@@ -25,7 +35,9 @@ public class ExcelParser {
         Calendar calendar = Calendar.getInstance();
         int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
         String todayName = getDayName(dayOfWeek).toUpperCase(Locale.getDefault());
-        Log.d("ExcelParser", "Сегодняшний день недели (верхний регистр): " + todayName);
+        boolean isNumeratorWeek = isNumeratorWeek();
+
+        Log.d(TAG, "Сегодня: " + todayName + ", Неделя числителя: " + isNumeratorWeek);
 
         try {
             fis = new FileInputStream(file);
@@ -39,91 +51,67 @@ public class ExcelParser {
                 Sheet sheet = workbook.getSheetAt(0);
                 Iterator<Row> rowIterator = sheet.iterator();
                 boolean foundDay = false;
+                Row currentTimeRow = null;
 
                 while (rowIterator.hasNext()) {
-                    Row row = rowIterator.next();
-                    Cell dayCell = row.getCell(0);
+                    Row currentRow = rowIterator.next();
+                    Cell dayCell = currentRow.getCell(0);
 
                     if (!foundDay) {
-                        if (dayCell != null && dayCell.getCellType() == CellType.STRING) {
-                            String cellDay = dayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault());
-                            Log.d("ExcelParser", "Найден день недели в файле (верхний регистр): " + cellDay);
-                            if (cellDay.startsWith(todayName)) {
-                                foundDay = true;
-                                Log.d("ExcelParser", "Совпадение найдено! foundDay = " + foundDay);
-                            }
+                        if (dayCell != null && dayCell.getCellType() == CellType.STRING && dayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(todayName)) {
+                            foundDay = true;
+                            Log.d(TAG, "Найдена строка с днем: " + currentRow.getRowNum());
                         }
                     } else {
-                        Log.d("ExcelParser", "Начало обработки расписания после нахождения дня.");
-                        Log.d("ExcelParser", "Обрабатывается строка №: " + row.getRowNum());
-                        Cell timeCell = row.getCell(1);
-                        Cell subjectInfoCellPg1 = row.getCell(3); // Предмет и препод. для 1 п/г (или общие)
-                        Cell subjectInfoCellPg2 = row.getCell(4); // Предмет и препод. для 2 п/г
-                        Cell roomCellPg1 = row.getCell(5);       // Аудитория для 1 п/г
-                        Cell roomCellCommon = row.getCell(7);    // Общая аудитория
-                        Cell roomCellPg2 = row.getCell(8);       // Аудитория для 2 п/г
-
-                        // Проверяем, не начался ли следующий день
-                        if (dayCell != null && dayCell.getCellType() == CellType.STRING) {
-                            String nextDay = getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault());
-                            String cellDay = dayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault());
-                            if (cellDay.startsWith(nextDay)) {
-                                Log.d("ExcelParser", "Найдено начало следующего дня: " + cellDay + ". Завершаем чтение.");
-                                break; // Выходим из цикла, так как расписание на сегодня закончилось
-                            }
-                        }
-
-                        String startTime = "";
-                        String endTime = "";
-
-                        if (timeCell != null && timeCell.getCellType() == CellType.STRING) {
-                            String timeValue = timeCell.getStringCellValue().trim();
+                        Cell timeCell = currentRow.getCell(1);
+                        if (timeCell != null && timeCell.getCellType() == CellType.STRING && !timeCell.getStringCellValue().trim().isEmpty()) {
+                            currentTimeRow = currentRow;
+                        } else if (currentTimeRow != null) {
+                            Cell timeValueCell = currentTimeRow.getCell(1);
+                            String timeValue = getStringCellValue(timeValueCell);
                             String[] times = timeValue.split(" - ");
                             if (times.length == 2) {
-                                startTime = times[0].trim();
-                                endTime = times[1].trim();
+                                String startTime = times[0].trim();
+                                String endTime = times[1].trim();
+
+                                // --- Первая подгруппа ---
+                                Cell subject1Cell = currentRow.getCell(3);
+                                String subject1 = extractSubjectName(getStringCellValue(subject1Cell));
+                                String room1 = getStringCellValue(currentRow.getCell(4));
+                                int[] color1RGB = getFontRGB(workbook, subject1Cell);
+
+                                Log.d(TAG, "Первая подгруппа - Цвет: " + Arrays.toString(color1RGB) + ", Числитель?: " + isNumeratorWeek + ", Предмет?: " + !subject1.isEmpty());
+
+                                if (colorMatches(color1RGB, COLOR_CHISLITEL_RGB) && isNumeratorWeek && !subject1.isEmpty()) {
+                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, числитель)"));
+                                } else if (colorMatches(color1RGB, COLOR_ZNAMENATEL_RGB) && !isNumeratorWeek && !subject1.isEmpty()) {
+                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, знаменатель)"));
+                                }
+
+                                // --- Вторая подгруппа ---
+                                Cell subject2Cell = currentRow.getCell(5);
+                                String subject2 = extractSubjectName(getStringCellValue(subject2Cell));
+                                String room2 = getStringCellValue(currentRow.getCell(6));
+                                int[] color2RGB = getFontRGB(workbook, subject2Cell);
+
+                                Log.d(TAG, "Вторая подгруппа - Цвет: " + Arrays.toString(color2RGB) + ", Числитель?: " + isNumeratorWeek + ", Предмет?: " + !subject2.isEmpty());
+
+                                if (colorMatches(color2RGB, COLOR_CHISLITEL_RGB) && isNumeratorWeek && !subject2.isEmpty()) {
+                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, числитель)"));
+                                } else if (colorMatches(color2RGB, COLOR_ZNAMENATEL_RGB) && !isNumeratorWeek && !subject2.isEmpty()) {
+                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, знаменатель)"));
+                                }
+
+                                currentTimeRow = null;
                             } else {
-                                Log.w("ExcelParser", "Неправильный формат времени в строке " + row.getRowNum() + ": " + timeValue);
+                                Log.w(TAG, "Неправильный формат времени в строке " + currentTimeRow.getRowNum() + ": " + timeValue);
+                                currentTimeRow = null;
                             }
-                            Log.d("ExcelParser", "startTime: " + startTime + ", endTime: " + endTime);
-                        } else {
-                            Log.w("ExcelParser", "Ячейка времени пуста или имеет неправильный формат в строке " + row.getRowNum());
                         }
 
-                        // Обработка первой подгруппы (или общих занятий)
-                        if (!startTime.isEmpty() && subjectInfoCellPg1 != null && subjectInfoCellPg1.getCellType() == CellType.STRING && !getStringCellValue(subjectInfoCellPg1).isEmpty()) {
-                            String subjectWithTeacher = getStringCellValue(subjectInfoCellPg1).trim();
-                            String teacher = extractTeacherName(subjectWithTeacher);
-                            String subjectOnly = subjectWithTeacher.replaceAll("\\s*\\([^\\)]*\\)\\s*", "");
-                            Cell firstGroupRoomCell = row.getCell(4); // Явно указываем индекс 4 для аудитории 1 п/г
-                            String room = getStringCellValue(firstGroupRoomCell != null ? firstGroupRoomCell : roomCellCommon); // Используем общую, если нет для подгруппы
-
-                            scheduleToday.append("Время: ").append(startTime).append(" - ").append(endTime);
-                            if (subjectInfoCellPg2 != null && subjectInfoCellPg2.getCellType() == CellType.STRING && !getStringCellValue(subjectInfoCellPg2).isEmpty()) {
-                                scheduleToday.append(" (1 пг)");
-                            }
-                            scheduleToday.append("\nПредмет: ").append(subjectOnly).append("\n");
-                            scheduleToday.append("Преподаватель: ").append(teacher).append("\n");
-                            scheduleToday.append("Аудитория: ").append(room).append("\n\n");
-                        }
-
-                        // Обработка второй подгруппы
-                        if (!startTime.isEmpty() && subjectInfoCellPg2 != null && subjectInfoCellPg2.getCellType() == CellType.STRING && !getStringCellValue(subjectInfoCellPg2).isEmpty()) {
-                            Cell secondGroupSubjectCell = row.getCell(5); // Явно указываем индекс 5 для предмета/преподавателя 2 п/г
-                            String subjectWithTeacher = getStringCellValue(secondGroupSubjectCell).trim();
-                            String teacher = extractTeacherName(subjectWithTeacher);
-                            String subjectOnly = subjectWithTeacher.replaceAll("\\s*\\([^\\)]*\\)\\s*", "");
-                            Cell secondGroupRoomCell = row.getCell(7); // Явно указываем индекс 7 для аудитории 2 п/г
-                            String room = getStringCellValue(secondGroupRoomCell);
-
-                            scheduleToday.append("Время: ").append(startTime).append(" - ").append(endTime).append(" (2 пг)\n");
-                            scheduleToday.append("Предмет: ").append(subjectOnly).append("\n");
-                            scheduleToday.append("Преподаватель: ").append(teacher).append("\n");
-                            scheduleToday.append("Аудитория: ").append(room).append("\n\n");
-                        }
-
-                        if (timeCell == null && subjectInfoCellPg1 == null && subjectInfoCellPg2 == null && roomCellPg1 == null && roomCellCommon == null && roomCellPg2 == null) {
-                            Log.d("ExcelParser", "Предполагаемый конец расписания на день.");
+                        Cell nextDayCell = currentRow.getCell(0);
+                        if (nextDayCell != null && nextDayCell.getCellType() == CellType.STRING && nextDayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()))) {
+                            Log.d(TAG, "Найдено начало следующего дня. Завершаем.");
                             break;
                         }
                     }
@@ -135,70 +123,113 @@ public class ExcelParser {
 
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(TAG, "Ошибка чтения файла: " + e.getMessage());
             return "Ошибка при чтении файла расписания.";
         } finally {
             try {
                 if (fis != null) fis.close();
                 if (workbook != null) workbook.close();
             } catch (IOException e) {
-                e.printStackTrace();
+                Log.e(TAG, "Ошибка закрытия файла: " + e.getMessage());
             }
         }
         return scheduleToday.toString();
     }
 
-    private static String getNextDayName(int currentDayOfWeek) {
-        int nextDayOfWeek;
-        if (currentDayOfWeek == Calendar.SUNDAY) {
-            nextDayOfWeek = Calendar.MONDAY;
-        } else {
-            nextDayOfWeek = currentDayOfWeek + 1;
+    private static boolean isNumeratorWeek() {
+        Calendar now = Calendar.getInstance();
+        int currentYear = now.get(Calendar.YEAR);
+        Calendar septemberFirst = Calendar.getInstance();
+        septemberFirst.set(currentYear, Calendar.SEPTEMBER, 1, 0, 0, 0);
+        septemberFirst.set(Calendar.MILLISECOND, 0);
+
+        if (now.before(septemberFirst)) {
+            septemberFirst.set(currentYear - 1, Calendar.SEPTEMBER, 1, 0, 0, 0);
+            septemberFirst.set(Calendar.MILLISECOND, 0);
         }
+
+        long diff = now.getTimeInMillis() - septemberFirst.getTimeInMillis();
+        long daysSinceSeptemberFirst = diff / (24 * 60 * 60 * 1000);
+        long weekNumber = daysSinceSeptemberFirst / 7;
+
+        return weekNumber % 2 == 0; // Четные недели (начиная с 0) - числитель
+    }
+
+    private static String getNextDayName(int currentDayOfWeek) {
+        int nextDayOfWeek = (currentDayOfWeek == Calendar.SUNDAY) ? Calendar.MONDAY : currentDayOfWeek + 1;
         return getDayName(nextDayOfWeek);
     }
 
     private static String getStringCellValue(Cell cell) {
-        if (cell == null) {
-            return "";
-        }
+        if (cell == null) return "";
         CellType cellType = cell.getCellType();
-        if (cellType == CellType.STRING) {
-            return cell.getStringCellValue().trim();
-        } else if (cellType == CellType.NUMERIC) {
-            return String.valueOf((int) cell.getNumericCellValue());
-        } else {
-            return "";
-        }
+        if (cellType == CellType.STRING) return cell.getStringCellValue().trim();
+        if (cellType == CellType.NUMERIC) return String.valueOf((int) cell.getNumericCellValue());
+        return "";
     }
 
     private static String getDayName(int dayOfWeek) {
-        switch (dayOfWeek) {
-            case Calendar.MONDAY:
-                return "Понедельник";
-            case Calendar.TUESDAY:
-                return "Вторник";
-            case Calendar.WEDNESDAY:
-                return "Среда";
-            case Calendar.THURSDAY:
-                return "Четверг";
-            case Calendar.FRIDAY:
-                return "Пятница";
-            case Calendar.SATURDAY:
-                return "Суббота";
-            case Calendar.SUNDAY:
-                return "Воскресенье";
-            default:
-                return "";
-        }
+        return switch (dayOfWeek) {
+            case Calendar.MONDAY -> "Понедельник";
+            case Calendar.TUESDAY -> "Вторник";
+            case Calendar.WEDNESDAY -> "Среда";
+            case Calendar.THURSDAY -> "Четверг";
+            case Calendar.FRIDAY -> "Пятница";
+            case Calendar.SATURDAY -> "Суббота";
+            case Calendar.SUNDAY -> "Воскресенье";
+            default -> "";
+        };
     }
 
-    private static String extractTeacherName(String subjectWithTeacher) {
-        Pattern pattern = Pattern.compile("\\(([^)]+)\\)");
-        Matcher matcher = pattern.matcher(subjectWithTeacher);
-        if (matcher.find()) {
-            return matcher.group(1).trim();
+    private static String extractSubjectName(String subjectWithTeacher) {
+        Matcher matcher = Pattern.compile("^([^\\(]+)").matcher(subjectWithTeacher.trim());
+        return matcher.find() ? matcher.group(1).trim() : subjectWithTeacher.trim();
+    }
+
+    private static boolean colorMatches(int[] rgb1, int[] rgb2) {
+        return rgb1 != null && rgb2 != null && Arrays.equals(rgb1, rgb2);
+    }
+
+    private static int[] getFontRGB(Workbook workbook, Cell cell) {
+        if (cell == null) return null;
+        try {
+            Font font = workbook.getFontAt(cell.getCellStyle().getFontIndex());
+            if (font instanceof XSSFFont) {
+                XSSFColor color = ((XSSFFont) font).getXSSFColor();
+                if (color != null && color.getRGB() != null) {
+                    byte[] rgbBytes = color.getRGB();
+                    Log.d(TAG, "RGB цвет (XLSX): " + (rgbBytes[0] & 0xFF) + ", " + (rgbBytes[1] & 0xFF) + ", " + (rgbBytes[2] & 0xFF));
+                    return new int[]{(rgbBytes[0] & 0xFF), (rgbBytes[1] & 0xFF), (rgbBytes[2] & 0xFF)};
+                }
+            } else if (font instanceof HSSFFont && workbook instanceof HSSFWorkbook) {
+                HSSFWorkbook hssfWorkbook = (HSSFWorkbook) workbook;
+                short colorIndex = ((HSSFFont) font).getColor();
+                HSSFPalette palette = hssfWorkbook.getCustomPalette();
+                HSSFColor customColor = palette.getColor(colorIndex);
+                if (customColor != null) {
+                    short[] rgbShort = customColor.getTriplet();
+                    return new int[]{(rgbShort[0] & 0xFF), (rgbShort[1] & 0xFF), (rgbShort[2] & 0xFF)};
+                } else {
+                    // Получаем предопределенные цвета HSSF через константы
+                    HSSFColor.HSSFColorPredefined[] predefinedColors = HSSFColor.HSSFColorPredefined.values();
+                    for (HSSFColor.HSSFColorPredefined predefinedColor : predefinedColors) {
+                        if (predefinedColor.getIndex() == colorIndex) {
+                            short[] rgbShort = predefinedColor.getColor().getTriplet();
+                            return new int[]{(rgbShort[0] & 0xFF), (rgbShort[1] & 0xFF), (rgbShort[2] & 0xFF)};
+                        }
+                    }
+                    Log.w(TAG, "Не удалось получить RGB цвет для индекса: " + colorIndex + " (.xls)");
+                }
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "Ошибка получения RGB цвета: " + e.getMessage());
         }
-        return "";
+        return null;
+    }
+
+    private static String formatScheduleEntry(String startTime, String endTime, String subject, String room, String group) {
+        return "Время: " + startTime + " - " + endTime + group + "\n" +
+                "Предмет: " + subject + "\n" +
+                "Аудитория: " + room + "\n\n";
     }
 }
