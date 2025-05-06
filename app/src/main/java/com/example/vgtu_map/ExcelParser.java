@@ -2,19 +2,13 @@ package com.example.vgtu_map;
 
 import android.util.Log;
 
-import org.apache.poi.hssf.usermodel.HSSFFont;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.hssf.usermodel.HSSFPalette;
-import org.apache.poi.hssf.util.HSSFColor;
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.xssf.usermodel.XSSFFont;
+import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFColor;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Iterator;
 import java.util.Locale;
@@ -24,10 +18,9 @@ import java.util.regex.Pattern;
 public class ExcelParser {
 
     private static final String TAG = "ExcelParser";
-    private static final int[] COLOR_CHISLITEL_RGB = {51, 51, 51}; // Черный
-    private static final int[] COLOR_ZNAMENATEL_RGB = {88, 113, 207}; // Синий
 
     public static String parseScheduleForToday(File file) {
+        Log.d(TAG, "--- Начало обработки расписания ---");
         StringBuilder scheduleToday = new StringBuilder("Расписание на сегодня:\n");
         FileInputStream fis = null;
         Workbook workbook = null;
@@ -51,7 +44,6 @@ public class ExcelParser {
                 Sheet sheet = workbook.getSheetAt(0);
                 Iterator<Row> rowIterator = sheet.iterator();
                 boolean foundDay = false;
-                Row currentTimeRow = null;
 
                 while (rowIterator.hasNext()) {
                     Row currentRow = rowIterator.next();
@@ -62,55 +54,84 @@ public class ExcelParser {
                             foundDay = true;
                             Log.d(TAG, "Найдена строка с днем: " + currentRow.getRowNum());
                         }
-                    } else {
+                    } else if (foundDay) {
+                        Log.d(TAG, "Обрабатываем строку " + currentRow.getRowNum());
                         Cell timeCell = currentRow.getCell(1);
                         if (timeCell != null && timeCell.getCellType() == CellType.STRING && !timeCell.getStringCellValue().trim().isEmpty()) {
-                            currentTimeRow = currentRow;
-                        } else if (currentTimeRow != null) {
-                            Cell timeValueCell = currentTimeRow.getCell(1);
-                            String timeValue = getStringCellValue(timeValueCell);
+                            String timeValue = getStringCellValue(timeCell);
                             String[] times = timeValue.split(" - ");
                             if (times.length == 2) {
                                 String startTime = times[0].trim();
                                 String endTime = times[1].trim();
+                                Log.d(TAG, "Время: " + startTime + " - " + endTime);
 
-                                // --- Первая подгруппа ---
+                                // Обработка текущей строки
                                 Cell subject1Cell = currentRow.getCell(3);
                                 String subject1 = extractSubjectName(getStringCellValue(subject1Cell));
                                 String room1 = getStringCellValue(currentRow.getCell(4));
-                                int[] color1RGB = getFontRGB(workbook, subject1Cell);
 
-                                Log.d(TAG, "Первая подгруппа - Цвет: " + Arrays.toString(color1RGB) + ", Числитель?: " + isNumeratorWeek + ", Предмет?: " + !subject1.isEmpty());
-
-                                if (colorMatches(color1RGB, COLOR_CHISLITEL_RGB) && isNumeratorWeek && !subject1.isEmpty()) {
-                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, числитель)"));
-                                } else if (colorMatches(color1RGB, COLOR_ZNAMENATEL_RGB) && !isNumeratorWeek && !subject1.isEmpty()) {
-                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, знаменатель)"));
-                                }
-
-                                // --- Вторая подгруппа ---
                                 Cell subject2Cell = currentRow.getCell(5);
                                 String subject2 = extractSubjectName(getStringCellValue(subject2Cell));
                                 String room2 = getStringCellValue(currentRow.getCell(6));
-                                int[] color2RGB = getFontRGB(workbook, subject2Cell);
 
-                                Log.d(TAG, "Вторая подгруппа - Цвет: " + Arrays.toString(color2RGB) + ", Числитель?: " + isNumeratorWeek + ", Предмет?: " + !subject2.isEmpty());
-
-                                if (colorMatches(color2RGB, COLOR_CHISLITEL_RGB) && isNumeratorWeek && !subject2.isEmpty()) {
-                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, числитель)"));
-                                } else if (colorMatches(color2RGB, COLOR_ZNAMENATEL_RGB) && !isNumeratorWeek && !subject2.isEmpty()) {
-                                    scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, знаменатель)"));
+                                Log.d(TAG, "Проверка числителя/знаменателя (текущая строка " + currentRow.getRowNum() + "): Неделя числителя - " + isNumeratorWeek + ", Предмет 1 - " + !subject1.isEmpty() + ", Предмет 2 - " + !subject2.isEmpty());
+                                if (isNumeratorWeek) {
+                                    if (!subject1.isEmpty()) {
+                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, строка " + currentRow.getRowNum() + ", числитель)"));
+                                    }
+                                    if (!subject2.isEmpty()) {
+                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, строка " + currentRow.getRowNum() + ", числитель)"));
+                                    }
+                                } else {
+                                    if (!subject1.isEmpty()) {
+                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, строка " + currentRow.getRowNum() + ", знаменатель)"));
+                                    }
+                                    if (!subject2.isEmpty()) {
+                                        scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, строка " + currentRow.getRowNum() + ", знаменатель)"));
+                                    }
                                 }
 
-                                currentTimeRow = null;
+                                // Проверяем следующую строку ДЛЯ ТОЙ ЖЕ ВРЕМЕННОЙ ПАРЫ, НО ДЛЯ ДРУГОЙ НЕДЕЛИ
+                                if (rowIterator.hasNext()) {
+                                    Row nextRow = rowIterator.next();
+                                    Cell nextTimeCell = nextRow.getCell(1);
+
+                                    // ЕСЛИ В СЛЕДУЮЩЕЙ СТРОКЕ ВРЕМЯ НЕ УКАЗАНО, ЗНАЧИТ ЭТО РАСПИСАНИЕ НА ДРУГУЮ НЕДЕЛЮ
+                                    if (nextTimeCell == null || nextTimeCell.getCellType() == CellType.BLANK || getStringCellValue(nextTimeCell).trim().isEmpty()) {
+                                        Log.d(TAG, "Следующая строка (" + nextRow.getRowNum() + ") - нет времени. Обрабатываем как другую неделю для той же пары.");
+                                        Cell subject1NextRowCell = nextRow.getCell(3);
+                                        String subject1NextRow = extractSubjectName(getStringCellValue(subject1NextRowCell));
+                                        String room1NextRow = getStringCellValue(nextRow.getCell(4));
+
+                                        Cell subject2NextRowCell = nextRow.getCell(5);
+                                        String subject2NextRow = extractSubjectName(getStringCellValue(subject2NextRowCell));
+                                        String room2NextRow = getStringCellValue(nextRow.getCell(6));
+
+                                        if (isNumeratorWeek) {
+                                            if (!subject1NextRow.isEmpty()) {
+                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room1NextRow, " (1 п/г, строка " + nextRow.getRowNum() + ", знаменатель)"));
+                                            }
+                                            if (!subject2NextRow.isEmpty()) {
+                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2NextRow, room2NextRow, " (2 п/г, строка " + nextRow.getRowNum() + ", знаменатель)"));
+                                            }
+                                        } else {
+                                            if (!subject1NextRow.isEmpty()) {
+                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room1NextRow, " (1 п/г, строка " + nextRow.getRowNum() + ", числитель)"));
+                                            }
+                                            if (!subject2NextRow.isEmpty()) {
+                                                scheduleToday.append(formatScheduleEntry(startTime, endTime, subject2NextRow, room2NextRow, " (2 п/г, строка " + nextRow.getRowNum() + ", числитель)"));
+                                            }
+                                        }
+                                    }
+                                }
                             } else {
-                                Log.w(TAG, "Неправильный формат времени в строке " + currentTimeRow.getRowNum() + ": " + timeValue);
-                                currentTimeRow = null;
+                                Log.w(TAG, "Неправильный формат времени в строке " + currentRow.getRowNum() + ": " + timeValue);
                             }
                         }
 
-                        Cell nextDayCell = currentRow.getCell(0);
-                        if (nextDayCell != null && nextDayCell.getCellType() == CellType.STRING && nextDayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()))) {
+                        // Проверка на начало следующего дня
+                        Cell nextDayCellForBreak = currentRow.getCell(0);
+                        if (nextDayCellForBreak != null && nextDayCellForBreak.getCellType() == CellType.STRING && nextDayCellForBreak.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()))) {
                             Log.d(TAG, "Найдено начало следующего дня. Завершаем.");
                             break;
                         }
@@ -133,6 +154,8 @@ public class ExcelParser {
                 Log.e(TAG, "Ошибка закрытия файла: " + e.getMessage());
             }
         }
+        Log.d(TAG, "--- Конец обработки расписания ---");
+        Log.d(TAG, "Итоговое расписание:\n" + scheduleToday.toString());
         return scheduleToday.toString();
     }
 
@@ -184,47 +207,6 @@ public class ExcelParser {
     private static String extractSubjectName(String subjectWithTeacher) {
         Matcher matcher = Pattern.compile("^([^\\(]+)").matcher(subjectWithTeacher.trim());
         return matcher.find() ? matcher.group(1).trim() : subjectWithTeacher.trim();
-    }
-
-    private static boolean colorMatches(int[] rgb1, int[] rgb2) {
-        return rgb1 != null && rgb2 != null && Arrays.equals(rgb1, rgb2);
-    }
-
-    private static int[] getFontRGB(Workbook workbook, Cell cell) {
-        if (cell == null) return null;
-        try {
-            Font font = workbook.getFontAt(cell.getCellStyle().getFontIndex());
-            if (font instanceof XSSFFont) {
-                XSSFColor color = ((XSSFFont) font).getXSSFColor();
-                if (color != null && color.getRGB() != null) {
-                    byte[] rgbBytes = color.getRGB();
-                    Log.d(TAG, "RGB цвет (XLSX): " + (rgbBytes[0] & 0xFF) + ", " + (rgbBytes[1] & 0xFF) + ", " + (rgbBytes[2] & 0xFF));
-                    return new int[]{(rgbBytes[0] & 0xFF), (rgbBytes[1] & 0xFF), (rgbBytes[2] & 0xFF)};
-                }
-            } else if (font instanceof HSSFFont && workbook instanceof HSSFWorkbook) {
-                HSSFWorkbook hssfWorkbook = (HSSFWorkbook) workbook;
-                short colorIndex = ((HSSFFont) font).getColor();
-                HSSFPalette palette = hssfWorkbook.getCustomPalette();
-                HSSFColor customColor = palette.getColor(colorIndex);
-                if (customColor != null) {
-                    short[] rgbShort = customColor.getTriplet();
-                    return new int[]{(rgbShort[0] & 0xFF), (rgbShort[1] & 0xFF), (rgbShort[2] & 0xFF)};
-                } else {
-                    // Получаем предопределенные цвета HSSF через константы
-                    HSSFColor.HSSFColorPredefined[] predefinedColors = HSSFColor.HSSFColorPredefined.values();
-                    for (HSSFColor.HSSFColorPredefined predefinedColor : predefinedColors) {
-                        if (predefinedColor.getIndex() == colorIndex) {
-                            short[] rgbShort = predefinedColor.getColor().getTriplet();
-                            return new int[]{(rgbShort[0] & 0xFF), (rgbShort[1] & 0xFF), (rgbShort[2] & 0xFF)};
-                        }
-                    }
-                    Log.w(TAG, "Не удалось получить RGB цвет для индекса: " + colorIndex + " (.xls)");
-                }
-            }
-        } catch (Exception e) {
-            Log.w(TAG, "Ошибка получения RGB цвета: " + e.getMessage());
-        }
-        return null;
     }
 
     private static String formatScheduleEntry(String startTime, String endTime, String subject, String room, String group) {
