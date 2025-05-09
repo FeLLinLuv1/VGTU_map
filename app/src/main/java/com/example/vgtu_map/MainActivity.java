@@ -1,5 +1,6 @@
 package com.example.vgtu_map;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Log;
@@ -24,7 +25,10 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
     private File downloadedFile; // Переменная для хранения скачанного файла
     private String currentGroupName = ""; // Храним текущее название группы
     private Button afterTomorrowButton; // Кнопка "Послезавтра"
-    private TextView dateHeader; // Добавляем TextView для заголовка даты
+    private TextView dateHeader; // Заголовок для отображения выбранной даты
+    private Button teacherButton;
+
+    private Button openMapButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -37,10 +41,20 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
         tomorrowButton = findViewById(R.id.tomorrowButton);
         scheduleTextView = findViewById(R.id.scheduleTextView);
         afterTomorrowButton = findViewById(R.id.afterTomorrowButton);
-        dateHeader = findViewById(R.id.dateHeader); // Инициализируем TextView заголовка
+        dateHeader = findViewById(R.id.dateHeader); // Инициализация заголовка
+        teacherButton = findViewById(R.id.teachersButton);
 
         searchButton.setText("Поиск расписания"); // Изменяем текст кнопки
         scheduleTextView.setText("Результат поиска расписания будет здесь"); // Начальный текст
+
+        teacherButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, teacher.class);
+                startActivity(intent);
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out); // Опциональная анимация
+            }
+        });
 
         searchButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -59,41 +73,57 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
             }
         });
 
+        setContentView(R.layout.activity_main); // Убедитесь, что это имя вашего макета
+
+        openMapButton = findViewById(R.id.openMapButton); // Найдите кнопку по ее ID
+        openMapButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                // Создаем Intent для запуска Activity с планом
+                Intent intent = new Intent(MainActivity.this, map.class); // Замените map.class на имя вашего класса Activity с планом
+                startActivity(intent); // Запускаем новую Activity
+            }
+        });
+
+
+
+
+
         todayButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                dateHeader.setText("Расписание на сегодня"); // Обновляем заголовок
                 if (downloadedFile != null && !currentGroupName.isEmpty()) {
                     Toast.makeText(MainActivity.this, "Загрузка расписания на сегодня...", Toast.LENGTH_SHORT).show();
                     loadScheduleForToday(downloadedFile);
                 } else {
                     Toast.makeText(MainActivity.this, "Сначала выполните поиск расписания", Toast.LENGTH_LONG).show();
                 }
-                dateHeader.setText("Расписание на сегодня"); // Обновляем заголовок
             }
         });
 
         tomorrowButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                dateHeader.setText("Расписание на завтра"); // Обновляем заголовок
                 if (downloadedFile != null && !currentGroupName.isEmpty()) {
                     Toast.makeText(MainActivity.this, "Загрузка расписания на завтра...", Toast.LENGTH_SHORT).show();
                     loadScheduleForTomorrow(downloadedFile);
                 } else {
                     Toast.makeText(MainActivity.this, "Сначала выполните поиск расписания", Toast.LENGTH_LONG).show();
                 }
-                dateHeader.setText("Расписание на завтра"); // Обновляем заголовок
             }
         });
         afterTomorrowButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                dateHeader.setText("Расписание на послезавтра"); // Обновляем заголовок
                 if (downloadedFile != null && !currentGroupName.isEmpty()) {
                     Toast.makeText(MainActivity.this, "Загрузка расписания на послезавтра...", Toast.LENGTH_SHORT).show();
                     loadScheduleForAfterTomorrow(downloadedFile);
                 } else {
                     Toast.makeText(MainActivity.this, "Сначала выполните поиск расписания", Toast.LENGTH_LONG).show();
                 }
-                dateHeader.setText("Расписание на послезавтра"); // Обновляем заголовок
             }
         });
     }
@@ -107,6 +137,7 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
                 scheduleTextView.setText("Файл расписания скачан.");
                 Log.d("MainActivity", "Файл расписания скачан: " + file.getAbsolutePath());
                 downloadedFile = file; // Сохраняем скачанный файл
+                dateHeader.setText("Расписание на сегодня"); // Устанавливаем начальный заголовок
                 // После скачивания сразу отображаем расписание на сегодня
                 loadScheduleForToday(downloadedFile);
             }
@@ -167,7 +198,7 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
             @Override
             public void run() {
                 if (file != null) {
-                    String aftertomorrowSchedule = ExcelParser.parseScheduleForAfterTomorrow(file);
+                    String aftertomorrowSchedule = ExcelParser.parseScheduleForDay(file, 2);
                     runOnUiThread(new Runnable() {
                         @Override
                         public void run() {

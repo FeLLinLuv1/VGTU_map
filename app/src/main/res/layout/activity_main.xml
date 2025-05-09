@@ -155,25 +155,53 @@
             app:layout_constraintTop_toBottomOf="@+id/weekButtonsLayout" />
 
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/scheduleRecyclerView"
-            android:layout_width="0dp"
+        <LinearLayout
+            android:id="@+id/weekScheduleNavigation"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/dateHeader" />
+            android:orientation="horizontal"
+            android:gravity="center_horizontal"
+            android:layout_marginTop="8dp"
+            app:layout_constraintTop_toBottomOf="@+id/dateHeader">
+
+            <Button
+                android:id="@+id/prevDayButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&lt;"
+                android:textSize="20sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/currentDayTextView"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text=""
+                android:textSize="16sp"
+                android:layout_marginStart="16dp"
+                android:layout_marginEnd="16dp"
+                android:visibility="gone" />
+
+            <Button
+                android:id="@+id/nextDayButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="&gt;"
+                android:textSize="20sp"
+                android:visibility="gone" />
+
+        </LinearLayout>
 
         <TextView
             android:id="@+id/scheduleTextView"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
+            android:layout_marginTop="16dp"
             android:text="Здесь будет отображено расписание"
             android:scrollbars="vertical"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/scheduleRecyclerView" />
+            app:layout_constraintTop_toBottomOf="@+id/weekScheduleNavigation" />
 
         <Button
             android:id="@+id/teachersButton"
@@ -182,10 +210,11 @@
             android:text="Расписание преподавателей"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/scheduleTextView" />
+            app:layout_constraintTop_toBottomOf="@+id/scheduleTextView"
+            android:layout_marginTop="16dp" />
 
         <Button
-            android:id="@+id/mapButton"
+            android:id="@+id/openMapButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="Карта аудиторий"
@@ -206,7 +235,7 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/mapButton" />
+            app:layout_constraintTop_toBottomOf="@+id/openMapButton" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

@@ -41,6 +41,8 @@ dependencies {
     implementation("org.jsoup:jsoup:1.15.4")
     implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation("org.apache.poi:poi:5.2.3")
+    implementation("com.caverock:androidsvg:1.4")
+
 
 
 

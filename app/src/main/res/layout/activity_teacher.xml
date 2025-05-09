@@ -11,13 +11,12 @@
         android:layout_height="wrap_content"
         android:padding="16dp">
 
-        <!-- Поле ввода группы -->
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/groupInputLayout"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             app:endIconMode="clear_text"
-            app:layout_constraintEnd_toStartOf="@+id/saveGroupButton"
+            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
 
@@ -29,86 +28,80 @@
                 android:inputType="textCapCharacters" />
         </com.google.android.material.textfield.TextInputLayout>
 
-        <!-- Кнопка "Сохранить группу" -->
         <Button
-            android:id="@+id/saveGroupButton"
+            android:id="@+id/showScheduleButton"
             style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="wrap_content"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:text="Сохранить"
-            app:layout_constraintBaseline_toBaselineOf="@id/groupInputLayout"
-            app:layout_constraintEnd_toEndOf="parent" />
+            android:layout_marginTop="16dp"
+            android:text="Показать расписание"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/groupInputLayout" />
 
-        <!-- Блок расписания -->
         <TextView
             android:id="@+id/dateHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
-            android:text="Пятница, 12 мая"
+            android:text=""
             android:textSize="18sp"
             android:textStyle="bold"
-            app:layout_constraintTop_toBottomOf="@id/groupInputLayout" />
+            app:layout_constraintTop_toBottomOf="@id/showScheduleButton" />
 
-        <androidx.recyclerview.widget.RecyclerView
-            android:id="@+id/scheduleRecyclerView"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
+        <TextView
+            android:id="@+id/scheduleTextView"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
             android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@id/dateHeader" />
-
-        <!-- Горизонтальные табы для дней -->
+            android:text="Здесь будет расписание преподавателя"
+            android:textSize="16sp"
+            app:layout_constraintBottom_toTopOf="@+id/todayButton"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@id/dateHeader"
+            app:layout_constraintVertical_bias="0.0" />
 
         <Button
             android:id="@+id/todayButton"
-            style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="170dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="Сегодня"
-            app:layout_constraintBottom_toTopOf="@+id/weekButton"
-            app:layout_constraintEnd_toStartOf="@+id/tomorrowButton"
-            app:layout_constraintStart_toStartOf="parent" />
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/scheduleTextView" />
 
         <Button
             android:id="@+id/tomorrowButton"
             style="?attr/materialButtonOutlinedStyle"
-            android:layout_width="170dp"
-            android:layout_marginTop="16dp"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:text="Завтра"
-            app:layout_constraintBottom_toTopOf="@+id/weekButton"
+            app:layout_constraintEnd_toStartOf="@+id/afterTomorrowButton"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/todayButton"
+            app:layout_constraintHorizontal_chainStyle="spread" />
+
+        <Button
+            android:id="@+id/afterTomorrowButton"
+            style="?attr/materialButtonOutlinedStyle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:text="Послезавтра"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toEndOf="@+id/todayButton" />
-
-        <!-- Аналогично для "Послезавтра", "Через 2 дня" -->
-
-
-        <!-- Кнопки "Неделя", "Преподаватели", "Карта" -->
-
-        <Button
-            android:id="@+id/weekButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="На неделю"
-            android:layout_marginTop="8dp"
-            app:layout_constraintBottom_toTopOf="@+id/nextWeekButton"/>
-
-        <Button
-            android:id="@+id/nextWeekButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Следующая неделя"
-            app:layout_constraintBottom_toTopOf="@+id/studentButton" />
+            app:layout_constraintStart_toEndOf="@+id/tomorrowButton"
+            app:layout_constraintTop_toBottomOf="@+id/todayButton" />
 
         <Button
             android:id="@+id/studentButton"
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
             android:text="Расписание студентов"
-            app:layout_constraintBottom_toBottomOf="parent" />
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/afterTomorrowButton" />
 
     </androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>
