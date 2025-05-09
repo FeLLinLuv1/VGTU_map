@@ -73,17 +73,7 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
             }
         });
 
-        setContentView(R.layout.activity_main); // Убедитесь, что это имя вашего макета
 
-        openMapButton = findViewById(R.id.openMapButton); // Найдите кнопку по ее ID
-        openMapButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // Создаем Intent для запуска Activity с планом
-                Intent intent = new Intent(MainActivity.this, map.class); // Замените map.class на имя вашего класса Activity с планом
-                startActivity(intent); // Запускаем новую Activity
-            }
-        });
 
 
 

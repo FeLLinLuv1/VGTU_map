@@ -46,36 +46,61 @@ public class teacher extends AppCompatActivity {
         showScheduleForTeacherButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String teacherLastName = extractLastName(teacherNameEditText.getText().toString().trim());
-                if (!teacherLastName.isEmpty()) {
-                    displaySchedule(LocalDate.now(), teacherLastName);
+                String enteredName = teacherNameEditText.getText().toString().trim();
+                String teacherFileName = "";
+                if (enteredName.equals("Бойматов Ойбекджон Фахрединович") || enteredName.equals("Бойматов ОФ")) {
+                    teacherFileName = "boimatov";
                 } else {
-                    Toast.makeText(teacher.this, "Пожалуйста, введите фамилию преподавателя", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(teacher.this, "Расписание доступно только для Бойматова О.Ф.", Toast.LENGTH_SHORT).show();
+                    return; // Выходим из обработчика, ничего не делаем
+                }
+
+                if (!teacherFileName.isEmpty()) {
+                    displaySchedule(LocalDate.now(), teacherFileName);
                 }
             }
         });
 
-        // Обработчики нажатий на кнопки дней недели
         todayButton.setOnClickListener(v -> {
-            String teacherLastName = extractLastName(teacherNameEditText.getText().toString().trim());
-            if (!teacherLastName.isEmpty()) {
-                displaySchedule(LocalDate.now(), teacherLastName);
+            String enteredName = teacherNameEditText.getText().toString().trim();
+            String teacherFileName = "";
+            if (enteredName.equals("Бойматов Ойбекджон Фахрединович") || enteredName.equals("Бойматов ОФ")) {
+                teacherFileName = "boimatov";
+            } else {
+                Toast.makeText(teacher.this, "Расписание доступно только для Бойматова О.Ф.", Toast.LENGTH_SHORT).show();
+                return; // Выходим из обработчика
+            }
+            if (!teacherFileName.isEmpty()) {
+                displaySchedule(LocalDate.now(), teacherFileName);
             }
         });
         tomorrowButton.setOnClickListener(v -> {
-            String teacherLastName = extractLastName(teacherNameEditText.getText().toString().trim());
-            if (!teacherLastName.isEmpty()) {
-                displaySchedule(LocalDate.now().plusDays(1), teacherLastName);
+            String enteredName = teacherNameEditText.getText().toString().trim();
+            String teacherFileName = "";
+            if (enteredName.equals("Бойматов Ойбекджон Фахрединович") || enteredName.equals("Бойматов ОФ")) {
+                teacherFileName = "boimatov";
+            } else {
+                Toast.makeText(teacher.this, "Расписание доступно только для Бойматова О.Ф.", Toast.LENGTH_SHORT).show();
+                return; // Выходим из обработчика
+            }
+            if (!teacherFileName.isEmpty()) {
+                displaySchedule(LocalDate.now().plusDays(1), teacherFileName);
             }
         });
         afterTomorrowButton.setOnClickListener(v -> {
-            String teacherLastName = extractLastName(teacherNameEditText.getText().toString().trim());
-            if (!teacherLastName.isEmpty()) {
-                displaySchedule(LocalDate.now().plusDays(2), teacherLastName);
+            String enteredName = teacherNameEditText.getText().toString().trim();
+            String teacherFileName = "";
+            if (enteredName.equals("Бойматов Ойбекджон Фахрединович") || enteredName.equals("Бойматов ОФ")) {
+                teacherFileName = "boimatov";
+            } else {
+                Toast.makeText(teacher.this, "Расписание доступно только для Бойматова О.Ф.", Toast.LENGTH_SHORT).show();
+                return; // Выходим из обработчика
+            }
+            if (!teacherFileName.isEmpty()) {
+                displaySchedule(LocalDate.now().plusDays(2), teacherFileName);
             }
         });
 
-        // Обработчик нажатия кнопки "Расписание студентов"
         studentScheduleButton.setOnClickListener(v -> {
             Intent intent = new Intent(teacher.this, MainActivity.class);
             startActivity(intent);
@@ -101,12 +126,4 @@ public class teacher extends AppCompatActivity {
         }
     }
 
-    // Вспомогательный метод для извлечения фамилии (просто берет первое слово)
-    private String extractLastName(String fullName) {
-        String[] parts = fullName.split(" ");
-        if (parts.length > 0) {
-            return parts[0];
-        }
-        return "";
-    }
 }
