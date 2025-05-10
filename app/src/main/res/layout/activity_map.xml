@@ -1,11 +1,42 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".map">
-    
+    android:fillViewport="true">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <com.github.chrisbanes.photoview.PhotoView
+            android:id="@+id/mapImageView"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:adjustViewBounds="true"
+            android:scaleType="fitStart"
+            android:src="@drawable/map_plan" />
+
+        <Button
+            android:id="@+id/aud_2304_button"
+            android:layout_width="100dp"
+            android:layout_height="50dp"
+            android:layout_marginStart="200dp"
+            android:layout_marginTop="150dp"
+            android:background="@android:color/transparent"
+            android:onClick="onAuditoriumClick"
+            android:visibility="visible" />
+
+        <Button
+            android:id="@+id/aud_1101_button"
+            android:layout_width="80dp"
+            android:layout_height="60dp"
+            android:layout_marginStart="50dp"
+            android:layout_marginTop="250dp"
+            android:background="@android:color/transparent"
+            android:onClick="onAuditoriumClick"
+            android:visibility="visible" />
+
+    </FrameLayout>
+</ScrollView>

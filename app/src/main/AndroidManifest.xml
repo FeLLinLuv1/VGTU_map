@@ -15,6 +15,9 @@
         android:theme="@style/Theme.VGTU_map"
         tools:targetApi="31">
         <activity
+            android:name=".mapActivity"
+            android:exported="false" />
+        <activity
             android:name=".map"
             android:exported="false" />
         <activity
