@@ -14,23 +14,27 @@
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/facultyInputLayout"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
             android:layout_width="0dp"
-            android:layout_height="60dp"
+            android:layout_height="wrap_content"
             android:hint="Факультет"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent"
             app:layout_constraintEnd_toStartOf="@+id/groupInputLayout"
             android:layout_marginEnd="8dp">
 
-            <Spinner
+            <AutoCompleteTextView
                 android:id="@+id/facultySpinner"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:inputType="none"/>
+                android:inputType="none"
+                android:focusable="false"
+                android:clickable="true"/>
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.textfield.TextInputLayout
             android:id="@+id/groupInputLayout"
+            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:hint="Введите группу"
@@ -46,17 +50,17 @@
                 android:inputType="textCapCharacters"/>
         </com.google.android.material.textfield.TextInputLayout>
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/saveGroupButton"
             android:layout_width="wrap_content"
-            android:layout_height="70dp"
+            android:layout_height="wrap_content"
             android:text="Сохранить"
             app:layout_constraintTop_toTopOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintBottom_toTopOf="@+id/editGroupButton"/>
+            app:layout_constraintEnd_toEndOf="parent" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/editGroupButton"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Изменить"
@@ -73,48 +77,39 @@
             android:layout_marginTop="16dp"
             app:layout_constraintTop_toBottomOf="@+id/facultyInputLayout">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/todayButton"
-                style="@style/Widget.AppCompat.Button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:ellipsize="none"
-                android:gravity="center"
-                android:maxLines="2"
-                android:minWidth="80dp"
-                android:minHeight="80dp"
-                android:padding="8dp"
+                android:minWidth="88dp"
+                android:minHeight="64dp"
+                android:padding="4dp"
                 android:text="Сегодня"
                 android:textSize="12sp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/tomorrowButton"
-                style="@style/Widget.AppCompat.Button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:ellipsize="none"
-                android:gravity="center"
-                android:maxLines="2"
-                android:minWidth="80dp"
-                android:minHeight="80dp"
-                android:padding="8dp"
+                android:minWidth="88dp"
+                android:minHeight="64dp"
+                android:padding="4dp"
                 android:text="Завтра"
                 android:textSize="12sp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/afterTomorrowButton"
-                style="@style/Widget.AppCompat.Button"
+                style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:ellipsize="none"
-                android:gravity="center"
-                android:maxLines="2"
-                android:minWidth="80dp"
-                android:minHeight="80dp"
-                android:padding="8dp"
+                android:minWidth="88dp"
+                android:minHeight="64dp"
+                android:padding="4dp"
                 android:text="Послезавтра"
                 android:textSize="12sp" />
 
@@ -128,14 +123,14 @@
             android:layout_marginTop="8dp"
             app:layout_constraintTop_toBottomOf="@+id/dayButtonsLayout">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/weekButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:text="Эта неделя" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/nextWeekButton"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -144,16 +139,14 @@
 
         </LinearLayout>
 
-        <TextView
+        <com.google.android.material.textview.MaterialTextView
             android:id="@+id/dateHeader"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:text="Расписание на сегодня"
-            android:textSize="18sp"
-            android:textStyle="bold"
+            android:textAppearance="@style/TextAppearance.MaterialComponents.Headline6"
             app:layout_constraintTop_toBottomOf="@+id/weekButtonsLayout" />
-
 
         <LinearLayout
             android:id="@+id/weekScheduleNavigation"
@@ -162,33 +155,33 @@
             android:orientation="horizontal"
             android:gravity="center_horizontal"
             android:layout_marginTop="8dp"
-            app:layout_constraintTop_toBottomOf="@+id/dateHeader">
+            app:layout_constraintTop_toBottomOf="@+id/dateHeader"
+            android:visibility="gone">
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/prevDayButton"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="&lt;"
-                android:textSize="20sp"
-                android:visibility="gone" />
+                android:textSize="20sp" />
 
-            <TextView
+            <com.google.android.material.textview.MaterialTextView
                 android:id="@+id/currentDayTextView"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text=""
                 android:textSize="16sp"
                 android:layout_marginStart="16dp"
-                android:layout_marginEnd="16dp"
-                android:visibility="gone" />
+                android:layout_marginEnd="16dp" />
 
-            <Button
+            <com.google.android.material.button.MaterialButton
                 android:id="@+id/nextDayButton"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="&gt;"
-                android:textSize="20sp"
-                android:visibility="gone" />
+                android:textSize="20sp" />
 
         </LinearLayout>
 
@@ -203,7 +196,7 @@
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toBottomOf="@+id/weekScheduleNavigation" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/teachersButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -213,7 +206,7 @@
             app:layout_constraintTop_toBottomOf="@+id/scheduleTextView"
             android:layout_marginTop="16dp" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/openMapButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
@@ -223,15 +216,15 @@
             app:layout_constraintEnd_toEndOf="parent"
             android:layout_marginTop="8dp" />
 
-        <Button
+        <com.google.android.material.button.MaterialButton
             android:id="@+id/feedbackButton"
-            style="?android:attr/borderlessButtonStyle"
+            style="@style/Widget.MaterialComponents.Button.TextButton"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginTop="16dp"
             android:enabled="false"
             android:text="Обратная связь"
-            android:textColor="@color/gray"
+            android:textColor="?android:attr/textColorSecondary"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

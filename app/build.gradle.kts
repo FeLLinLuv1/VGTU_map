@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -42,9 +43,10 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation("org.apache.poi:poi:5.2.3")
     implementation("com.caverock:androidsvg:1.3")
-    implementation("com.github.chrisbanes.photoview:library:2.0.0")
 
-
+    implementation(platform("com.google.firebase:firebase-bom:33.13.0"))
+    implementation ("com.google.firebase:firebase-database")
+    implementation ("com.google.android.material:material:1.11.0")
 
 
     testImplementation(libs.junit)

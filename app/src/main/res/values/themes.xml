@@ -1,9 +1,22 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <!-- Base application theme. -->
     <style name="Base.Theme.VGTU_map" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <item name="colorPrimary">@color/purple_primary</item>
+        <item name="colorPrimaryVariant">@color/purple_dark</item>
+        <item name="colorOnPrimary">@color/white</item>
+        <item name="colorSecondary">@color/purple_accent</item>
+        <item name="colorSecondaryVariant">@color/purple_accent_dark</item>
+        <item name="colorOnSecondary">@color/white</item>
+        <item name="android:colorBackground">@color/light_gray</item>
+        <item name="colorOnBackground">@color/dark_gray</item>
     </style>
 
     <style name="Theme.VGTU_map" parent="Base.Theme.VGTU_map" />
+
+    <color name="purple_primary">#7700FF</color>
+    <color name="purple_dark">#5200B3</color>
+    <color name="purple_accent">#7700FF</color>
+    <color name="purple_accent_dark">#5200B3</color>
+    <color name="white">#FFFFFFFF</color>
+    <color name="dark_gray">#333333</color>
+    <color name="light_gray">#F0F0F0</color>
 </resources>

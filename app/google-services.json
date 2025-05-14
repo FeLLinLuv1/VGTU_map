@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "341681738599",
+    "project_id": "vgtumap",
+    "storage_bucket": "vgtumap.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:341681738599:android:a6300df2281ac69d6a15c2",
+        "android_client_info": {
+          "package_name": "com.example.vgtu_map"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDflzGhjexFxW5nuWAqA1_U4zjDSp1dlcs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

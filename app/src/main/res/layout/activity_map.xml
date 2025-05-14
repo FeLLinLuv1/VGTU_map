@@ -1,42 +1,70 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:fillViewport="true">
+    tools:context=".map">
 
-    <FrameLayout
+    <LinearLayout
+        android:id="@+id/selectionLayout"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
 
-        <com.github.chrisbanes.photoview.PhotoView
-            android:id="@+id/mapImageView"
-            android:layout_width="match_parent"
+        <TextView
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:adjustViewBounds="true"
-            android:scaleType="fitStart"
-            android:src="@drawable/map_plan" />
+            android:text="Корпус: "
+            android:textSize="16sp"
+            android:layout_marginEnd="8dp"/>
 
-        <Button
-            android:id="@+id/aud_2304_button"
-            android:layout_width="100dp"
-            android:layout_height="50dp"
-            android:layout_marginStart="200dp"
-            android:layout_marginTop="150dp"
-            android:background="@android:color/transparent"
-            android:onClick="onAuditoriumClick"
-            android:visibility="visible" />
+        <Spinner
+            android:id="@+id/corpusSpinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
 
-        <Button
-            android:id="@+id/aud_1101_button"
-            android:layout_width="80dp"
-            android:layout_height="60dp"
-            android:layout_marginStart="50dp"
-            android:layout_marginTop="250dp"
-            android:background="@android:color/transparent"
-            android:onClick="onAuditoriumClick"
-            android:visibility="visible" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Этаж: "
+            android:textSize="16sp"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="8dp"/>
 
-    </FrameLayout>
-</ScrollView>
+        <Spinner
+            android:id="@+id/floorSpinner"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"/>
+
+    </LinearLayout>
+
+    <WebView
+        android:id="@+id/mapWebView"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        app:layout_constraintTop_toBottomOf="@+id/selectionLayout"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@+id/infoTextView" />
+
+    <TextView
+        android:id="@+id/infoTextView"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="16dp"
+        android:layout_marginEnd="16dp"
+        android:layout_marginBottom="16dp"
+        android:text="Информация об аудитории появится здесь"
+        android:textSize="18sp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

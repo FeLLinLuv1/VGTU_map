@@ -27,7 +27,6 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
     private Button afterTomorrowButton; // Кнопка "Послезавтра"
     private TextView dateHeader; // Заголовок для отображения выбранной даты
     private Button teacherButton;
-
     private Button openMapButton;
 
     @Override
@@ -43,6 +42,8 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
         afterTomorrowButton = findViewById(R.id.afterTomorrowButton);
         dateHeader = findViewById(R.id.dateHeader); // Инициализация заголовка
         teacherButton = findViewById(R.id.teachersButton);
+        openMapButton = findViewById(R.id.openMapButton);
+
 
         searchButton.setText("Поиск расписания"); // Изменяем текст кнопки
         scheduleTextView.setText("Результат поиска расписания будет здесь"); // Начальный текст
@@ -51,6 +52,15 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
             @Override
             public void onClick(View v) {
                 Intent intent = new Intent(MainActivity.this, teacher.class);
+                startActivity(intent);
+                overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out); // Опциональная анимация
+            }
+        });
+
+        openMapButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(MainActivity.this, map.class);
                 startActivity(intent);
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out); // Опциональная анимация
             }
