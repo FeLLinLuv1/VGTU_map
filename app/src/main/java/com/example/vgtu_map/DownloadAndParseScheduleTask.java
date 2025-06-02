@@ -18,7 +18,7 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.util.List;
 
-public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<String>> {
+public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, File> { // Изменили Generic на File
 
     private static final String TAG = "DownloadParseTask";
     private final Context context;
@@ -36,18 +36,23 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
     }
 
     @Override
-    protected List<String> doInBackground(String... params) {
+    protected File doInBackground(String... params) {
         targetGroupName = params[0];
+        String schedulePageUrl = params[1]; // Получаем URL из параметров
+
         if (targetGroupName == null || targetGroupName.isEmpty()) {
             listener.onError("Название группы не указано.");
             return null;
         }
+        if (schedulePageUrl == null || schedulePageUrl.isEmpty()) {
+            listener.onError("URL страницы расписания не указан.");
+            return null;
+        }
 
-        String schedulePageUrl = "https://cchgeu.ru/studentu/schedule/spo/";
         String excelUrl = null;
 
         try {
-            Log.d(TAG, "Начинаем поиск Excel-файла для группы: " + targetGroupName);
+            Log.d(TAG, "Начинаем поиск Excel-файла для группы: " + targetGroupName + " на странице: " + schedulePageUrl);
             Document doc = Jsoup.connect(schedulePageUrl).get();
             Elements links = doc.select("a[href$=.xlsx], a[href$=.xls]");
             String normalizedTargetGroupName = targetGroupName.trim().toUpperCase();
@@ -57,19 +62,16 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
                 String href = link.absUrl("href");
                 Log.d(TAG, "Найдена ссылка на странице: Текст='" + linkText + "', URL='" + href + "'");
 
-                // Проверяем, начинается ли текст ссылки (без учета регистра) с названия группы
-                if (linkText.toUpperCase().startsWith(normalizedTargetGroupName)) {
-                    // Затем проверяем, заканчивается ли URL на .xlsx или .xls
-                    if (href.toLowerCase().endsWith(".xlsx") || href.toLowerCase().endsWith(".xls")) {
-                        excelUrl = href;
-                        Log.d(TAG, "Найдена целевая ссылка: " + excelUrl);
-                        break;
-                    }
+                if (linkText.toUpperCase().startsWith(normalizedTargetGroupName) &&
+                        (href.toLowerCase().endsWith(".xlsx") || href.toLowerCase().endsWith(".xls"))) {
+                    excelUrl = href;
+                    Log.d(TAG, "Найдена целевая ссылка: " + excelUrl);
+                    break;
                 }
             }
 
             if (excelUrl == null) {
-                Log.d(TAG, "Excel-файл для группы " + targetGroupName + " не найден на сайте.");
+                Log.d(TAG, "Excel-файл для группы " + targetGroupName + " не найден на странице: " + schedulePageUrl);
                 listener.onError("Excel-файл для группы не найден на сайте.");
                 return null;
             }
@@ -87,7 +89,7 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
             listener.onError("Ошибка при поиске или скачивании файла: " + e.getMessage());
         }
 
-        return null; // Мы не возвращаем список строк, а работаем с файлом напрямую
+        return null; // Теперь возвращаем File напрямую
     }
 
     private File downloadFile(String fileUrl, String groupName) {
@@ -118,7 +120,7 @@ public class DownloadAndParseScheduleTask extends AsyncTask<String, Void, List<S
     }
 
     @Override
-    protected void onPostExecute(List<String> result) {
-        // Больше не используется
+    protected void onPostExecute(File file) {
+        // Больше не используется, колбэк вызывается в doInBackground
     }
 }

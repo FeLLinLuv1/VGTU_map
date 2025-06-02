@@ -33,14 +33,14 @@ public class teacher extends AppCompatActivity {
         setContentView(R.layout.activity_teacher);
 
         // Инициализация элементов UI
-        dateHeaderTextView = findViewById(R.id.dateHeader);
-        scheduleDisplayTextView = findViewById(R.id.scheduleTextView);
-        todayButton = findViewById(R.id.todayButton);
-        tomorrowButton = findViewById(R.id.tomorrowButton);
-        afterTomorrowButton = findViewById(R.id.afterTomorrowButton);
-        studentScheduleButton = findViewById(R.id.studentButton);
-        showScheduleForTeacherButton = findViewById(R.id.showScheduleButton);
-        teacherNameEditText = findViewById(R.id.groupEditText); // Используем прежний ID для поля ФИО
+        dateHeaderTextView = findViewById(R.id.dateHeaderTeachers);
+        scheduleDisplayTextView = findViewById(R.id.scheduleTextViewTeachers);
+        todayButton = findViewById(R.id.todayButtonTeachers);
+        tomorrowButton = findViewById(R.id.tomorrowButtonTeachers);
+        afterTomorrowButton = findViewById(R.id.afterTomorrowButtonTeachers);
+        studentScheduleButton = findViewById(R.id.studentScheduleButton);
+        showScheduleForTeacherButton = findViewById(R.id.searchTeacherScheduleButton);
+        teacherNameEditText = findViewById(R.id.teacherFioEditText); // Используем прежний ID для поля ФИО
 
         // Обработчик нажатия кнопки "Показать расписание"
         showScheduleForTeacherButton.setOnClickListener(new View.OnClickListener() {
@@ -90,11 +90,11 @@ public class teacher extends AppCompatActivity {
         afterTomorrowButton.setOnClickListener(v -> {
             String enteredName = teacherNameEditText.getText().toString().trim();
             String teacherFileName = "";
-            if (enteredName.equals("Бойматов Ойбекджон Фахрединович") || enteredName.equals("Бойматов ОФ")) {
+            if (enteredName.equals("Бойматов Ойбекджон Фахрединович") || enteredName.equals("Бойматов ОФ") || enteredName.equals("Бойматов О.Ф.") || enteredName.equals("Бойматов")) {
                 teacherFileName = "boimatov";
             } else {
                 Toast.makeText(teacher.this, "Расписание доступно только для Бойматова О.Ф.", Toast.LENGTH_SHORT).show();
-                return; // Выходим из обработчика
+                return;
             }
             if (!teacherFileName.isEmpty()) {
                 displaySchedule(LocalDate.now().plusDays(2), teacherFileName);
@@ -107,9 +107,7 @@ public class teacher extends AppCompatActivity {
             finish();
             overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out);
         });
-
-        // Показать расписание на сегодня при первом запуске (можно убрать или оставить с пустым запросом)
-        // displaySchedule(LocalDate.now(), "");
+        
     }
 
     private void displaySchedule(LocalDate date, String teacherLastName) {

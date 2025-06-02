@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="12dp"> <TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Корпус:"
+    android:textSize="14sp" android:layout_marginBottom="2dp"/> <Spinner
+    android:id="@+id/dialogCorpusSpinner"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp" style="@style/Widget.AppCompat.Spinner" android:spinnerMode="dropdown"/> <TextView
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:text="Этаж:"
+    android:textSize="14sp" android:layout_marginBottom="2dp"/> <Spinner
+    android:id="@+id/dialogFloorSpinner"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="18dp" style="@style/Widget.AppCompat.Spinner" android:spinnerMode="dropdown"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Поиск аудитории:"
+        android:textSize="14sp" android:layout_marginBottom="3dp"/> <EditText
+        android:id="@+id/dialogSearchAuditoriumEditText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Введите номер (напр. 1434, WC)"
+        android:inputType="text"
+        android:padding="8dp" android:layout_marginBottom="1dp" android:textSize="14sp" android:minHeight="40dp"/>
+
+    <Button
+        android:id="@+id/dialogSearchButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:text="Найти на карте"
+        android:textSize="14sp" />
+</LinearLayout>

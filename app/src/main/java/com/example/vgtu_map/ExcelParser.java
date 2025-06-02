@@ -3,14 +3,9 @@ package com.example.vgtu_map;
 import android.util.Log;
 
 import org.apache.poi.ss.usermodel.*;
-import org.apache.poi.hssf.usermodel.HSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.time.DayOfWeek;
-import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Iterator;
 import java.util.Locale;
@@ -20,244 +15,362 @@ import java.util.regex.Pattern;
 public class ExcelParser {
 
     private static final String TAG = "ExcelParser";
+    private static final String DEBUG_PARSE_DETAIL = "DEBUG_PARSE_DETAIL"; // Новый тег для детального логирования
 
     public static String parseScheduleForToday(File file) {
         Log.d(TAG, "--- Начало обработки расписания на сегодня ---");
-        return parseScheduleForDay(file, 0); // 0 - смещение для текущего дня
+        return parseScheduleForDay(file, 0);
     }
-
     public static String parseScheduleForTomorrow(File file) {
         Log.d(TAG, "--- Начало обработки расписания на завтра ---");
-        return parseScheduleForDay(file, 1); // 1 - смещение для следующего дня
+        return parseScheduleForDay(file, 1);
     }
-
     public static String parseScheduleForAfterTomorrow(File file) {
         Log.d(TAG, "--- Начало обработки расписания на послезавтра ---");
-        return parseScheduleForDay(file, 2); // 2 - смещение для следующего дня
+        return parseScheduleForDay(file, 2);
     }
-
-    public static String parseScheduleForDayOfWeek(File file, int dayOfWeek, boolean isNumeratorWeek, int weekOffset) {
-        StringBuilder scheduleForDay = new StringBuilder("Расписание на ");
-        FileInputStream fis = null;
-        Workbook workbook = null;
-
+    public static String parseScheduleForDay(File file, int dayOffset) {
+        boolean hasCombinedGroups = checkCombinedGroups(file, dayOffset);
+        if (hasCombinedGroups) {
+            Log.d(TAG, "parseScheduleForDay: Обнаружены объединенные группы. Используем расширенный парсинг (3 подгруппы).");
+            return parseScheduleForThreeSubgroups(file, dayOffset);
+        } else {
+            Log.d(TAG, "parseScheduleForDay: Объединенные группы не обнаружены. Используем парсинг для двух подгрупп.");
+            return parseScheduleForTwoSubgroups(file, dayOffset);
+        }
+    }
+    private static boolean checkCombinedGroups(File file, int dayOffset) {
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_WEEK, dayOffset);
+        int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
         String dayName = getDayName(dayOfWeek).toUpperCase(Locale.getDefault());
-        scheduleForDay.append(getDayName(dayOfWeek)).append(":\n");
+        try (FileInputStream fis = new FileInputStream(file); Workbook workbook = WorkbookFactory.create(fis)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            boolean foundDay = false;
+            Iterator<Row> rowIterator = sheet.iterator();
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+                Cell dayCell = row.getCell(0);
 
-        Log.d(TAG, "Запрос расписания на: " + dayName + ", Неделя числителя: " + isNumeratorWeek + ", Смещение недели: " + weekOffset + ", dayOfWeek: " + dayOfWeek);
-
-        try {
-            fis = new FileInputStream(file);
-            if (file.getName().endsWith(".xlsx")) {
-                workbook = new XSSFWorkbook(fis);
-            } else if (file.getName().endsWith(".xls")) {
-                workbook = new HSSFWorkbook(fis);
-            }
-
-            if (workbook != null) {
-                Sheet sheet = workbook.getSheetAt(0);
-                Iterator<Row> rowIterator = sheet.iterator();
-                boolean foundDaySection = false;
-
-                while (rowIterator.hasNext()) {
-                    Row currentRow = rowIterator.next();
-                    Cell dayCell = currentRow.getCell(0);
-
-                    if (!foundDaySection) {
-                        if (dayCell != null && dayCell.getCellType() == CellType.STRING &&
-                                dayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(dayName)) {
-                            foundDaySection = true;
-                            Log.d(TAG, "Найдена секция для дня: " + dayName + " (строка " + currentRow.getRowNum() + ")");
+                if (!foundDay) {
+                    if (dayCell != null && getStringCellValue(dayCell).trim().toUpperCase(Locale.getDefault()).startsWith(dayName)) {
+                        foundDay = true;
+                    }
+                } else {
+                    Cell timeCell = row.getCell(1);
+                    if (timeCell != null && !getStringCellValue(timeCell).trim().isEmpty()) {
+                        Cell combinedRoomCell = row.getCell(9);
+                        if (combinedRoomCell != null && !getStringCellValue(combinedRoomCell).trim().isEmpty()) {
+                            Log.d(TAG, "checkCombinedGroups: Обнаружена объединенная группа (3 подгруппы) в строке " + row.getRowNum() + " для дня " + dayName);
+                            return true;
                         }
                     } else {
-                        Cell timeCell = currentRow.getCell(1);
-                        if (timeCell != null && timeCell.getCellType() == CellType.STRING && !timeCell.getStringCellValue().trim().isEmpty()) {
-                            String timeValue = getStringCellValue(timeCell);
-                            String[] times = timeValue.split(" - ");
-                            if (times.length == 2) {
-                                String startTime = times[0].trim();
-                                String endTime = times[1].trim();
-
-                                Cell subject1Cell = currentRow.getCell(3);
-                                String subject1 = extractSubjectName(getStringCellValue(subject1Cell));
-                                String room1 = getStringCellValue(currentRow.getCell(4));
-                                Cell subject2Cell = currentRow.getCell(5);
-                                String subject2 = extractSubjectName(getStringCellValue(subject2Cell));
-                                String room2 = getStringCellValue(currentRow.getCell(6));
-                                String room3 = getStringCellValue(currentRow.getCell(7));
-
-                                boolean isNumeratorRow = room3.isEmpty(); // Предположение, основанное на вашем коде
-
-                                if (isNumeratorWeek == isNumeratorRow) {
-                                    if (!subject1.isEmpty() && isNumeratorRow) {
-                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г)"));
-                                    } else if (!subject1.isEmpty() && !isNumeratorRow) {
-                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1, room3, ""));
-                                    }
-                                    if (!subject2.isEmpty()) {
-                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г)"));
-                                    }
-                                }
-                            }
-                        } else if (currentRow.getCell(0) != null && currentRow.getCell(0).getCellType() == CellType.STRING &&
-                                currentRow.getCell(0).getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayNameForParser(dayOfWeek).toUpperCase(Locale.getDefault()))) {
-                            Log.d(TAG, "Конец секции для дня: " + dayName);
-                            break;
-                        }
+                    }
+                    Cell nextDayIndicatorCell = row.getCell(0);
+                    if (nextDayIndicatorCell != null && getStringCellValue(nextDayIndicatorCell).trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()))) {
+                        break;
                     }
                 }
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Ошибка чтения файла: " + e.getMessage());
-            return "Ошибка при чтении файла расписания.";
-        } finally {
-            try {
-                if (fis != null) fis.close();
-                if (workbook != null) workbook.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Ошибка закрытия файла: " + e.getMessage());
-            }
+            Log.d(TAG, "checkCombinedGroups: Объединенные группы (3 подгруппы) не обнаружены для дня " + dayName + ". Используем парсинг для 2 подгрупп.");
+        } catch (IOException | IllegalArgumentException e) {
+            Log.e(TAG, "checkCombinedGroups: Ошибка чтения файла: " + e.getMessage());
         }
-
-        if (scheduleForDay.toString().equals("Расписание на " + getDayName(dayOfWeek) + ":\n")) {
-            return "На этот день расписаний нет.";
-        }
-
-        return scheduleForDay.toString();
+        return false;
     }
-
-
-    public static String parseScheduleForDay(File file, int dayOffset) {
+    private static String parseScheduleForThreeSubgroups(File file, int dayOffset) {
         StringBuilder scheduleForDay = new StringBuilder();
-        FileInputStream fis = null;
-        Workbook workbook = null;
-
         Calendar calendar = Calendar.getInstance();
-        calendar.add(Calendar.DAY_OF_WEEK, dayOffset); // Прибавляем смещение к текущему дню
+        calendar.add(Calendar.DAY_OF_WEEK, dayOffset);
         int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
         String dayName = getDayName(dayOfWeek).toUpperCase(Locale.getDefault());
         boolean isNumeratorWeek = isNumeratorWeek();
+        Log.d(TAG, "parseScheduleForThreeSubgroups: Выбранный день: " + dayName + ", Неделя числителя: " + isNumeratorWeek + ", Смещение: " + dayOffset);
+        try (FileInputStream fis = new FileInputStream(file); Workbook workbook = WorkbookFactory.create(fis)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            boolean foundDaySection = false;
+            int lastRowOfCurrentDay = -1;
+            Iterator<Row> rowIterator = sheet.iterator();
+            Row currentRow = null;
+            String currentTimeForPair = "";
 
-        Log.d(TAG, "Выбранный день: " + dayName + ", Неделя числителя: " + isNumeratorWeek + ", Смещение: " + dayOffset);
+            while (rowIterator.hasNext()) {
+                currentRow = rowIterator.next();
+                int rowNum = currentRow.getRowNum();
+                Cell dayCell = currentRow.getCell(0);
+                String currentCellDayValue = (dayCell != null) ? getStringCellValue(dayCell).trim().toUpperCase(Locale.getDefault()) : "";
+                Log.d(DEBUG_PARSE_DETAIL, "--- Обработка строки: " + rowNum + " ---");
+                Log.d(DEBUG_PARSE_DETAIL, "Cell(0) value: '" + currentCellDayValue + "'");
+                Log.d(DEBUG_PARSE_DETAIL, "foundDaySection: " + foundDaySection);
+                if (!foundDaySection) {
+                    if (currentCellDayValue.startsWith(dayName)) {
+                        foundDaySection = true;
+                        Log.d(DEBUG_PARSE_DETAIL, "Найдена секция дня: " + dayName + " в строке " + rowNum);
+                        lastRowOfCurrentDay = rowNum + 13;
+                    }
+                }
+                if (foundDaySection) {
+                    if (rowNum > lastRowOfCurrentDay) {
+                        Log.d(TAG, "parseScheduleForThreeSubgroups: Вышли за пределы дня " + dayName + ". Завершаем.");
+                        break;
+                    }
+                    if (!currentCellDayValue.isEmpty() && currentCellDayValue.startsWith(getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()))) {
+                        Log.d(DEBUG_PARSE_DETAIL, "Условие остановки дня сработало в строке " + rowNum + " для дня " + dayName);
+                        Log.d(DEBUG_PARSE_DETAIL, "Причина: Обнаружен следующий день: '" + currentCellDayValue + "'. Ожидался: '" + getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()) + "'");
+                        break; // Выход из цикла
+                    }
+                    Cell timeCell = currentRow.getCell(1);
+                    String cellTimeValue = (timeCell != null) ? getStringCellValue(timeCell).trim() : "";
+                    if (!cellTimeValue.isEmpty()) {
+                        currentTimeForPair = cellTimeValue;
+                        Log.d(DEBUG_PARSE_DETAIL, "Найдено новое время пары: '" + currentTimeForPair + "' в строке " + rowNum);
+                    } else {
+                        Log.d(DEBUG_PARSE_DETAIL, "Время пары в строке " + rowNum + " пустое. Используем предыдущее время: '" + currentTimeForPair + "'");
+                    }
+                    if (!currentTimeForPair.isEmpty()) {
+                        String[] times = currentTimeForPair.split(" - ");
+                        if (times.length == 2) {
+                            String subject1Numerator = extractSubjectName(getStringCellValue(currentRow.getCell(3)));
+                            String room1Numerator = getStringCellValue(currentRow.getCell(4));
+                            String subject2Numerator = extractSubjectName(getStringCellValue(currentRow.getCell(5)));
+                            String room2Numerator = getStringCellValue(currentRow.getCell(6));
+                            String subject3Numerator = extractSubjectName(getStringCellValue(currentRow.getCell(7)));
+                            String room3Numerator = getStringCellValue(currentRow.getCell(8));
+                            String commonRoomNumerator = getStringCellValue(currentRow.getCell(9));
 
-        try {
-            fis = new FileInputStream(file);
-            if (file.getName().endsWith(".xlsx")) {
-                workbook = new XSSFWorkbook(fis);
-            } else if (file.getName().endsWith(".xls")) {
-                workbook = new HSSFWorkbook(fis);
-            }
+                            String subject1Denominator = "";
+                            String room1Denominator = "";
+                            String subject2Denominator = "";
+                            String room2Denominator = "";
+                            String subject3Denominator = "";
+                            String room3Denominator = "";
+                            String commonRoomDenominator = "";
 
-            if (workbook != null) {
-                Sheet sheet = workbook.getSheetAt(0);
-                Iterator<Row> rowIterator = sheet.iterator();
-                boolean foundDay = false;
-
-                while (rowIterator.hasNext()) {
-                    Row currentRow = rowIterator.next();
-                    Cell dayCell = currentRow.getCell(0);
-
-                    if (!foundDay) {
-                        if (dayCell != null && dayCell.getCellType() == CellType.STRING && dayCell.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(dayName)) {
-                            foundDay = true;
-                            Log.d(TAG, "Найдена строка с днем: " + currentRow.getRowNum() + " (" + dayName + ")");
-                        }
-                    } else if (foundDay) {
-                        Log.d(TAG, "Обрабатываем строку " + currentRow.getRowNum());
-                        Cell timeCell = currentRow.getCell(1);
-                        if (timeCell != null && timeCell.getCellType() == CellType.STRING && !timeCell.getStringCellValue().trim().isEmpty()) {
-                            String timeValue = getStringCellValue(timeCell);
-                            String[] times = timeValue.split(" - ");
-                            if (times.length == 2) {
-                                String startTime = times[0].trim();
-                                String endTime = times[1].trim();
-                                Log.d(TAG, "Время: " + startTime + " - " + endTime);
-
-                                // Обработка текущей строки
-                                Cell subject1Cell = currentRow.getCell(3);
-                                String subject1 = extractSubjectName(getStringCellValue(subject1Cell));
-                                String room1 = getStringCellValue(currentRow.getCell(4));
-                                Cell subject2Cell = currentRow.getCell(5);
-                                String subject2 = extractSubjectName(getStringCellValue(subject2Cell));
-                                String room2 = getStringCellValue(currentRow.getCell(6));
-                                String room3 = getStringCellValue(currentRow.getCell(7));
-
-                                if (isNumeratorWeek) {
-                                    Log.d(TAG, "Проверка числителя/знаменателя (текущая строка " + currentRow.getRowNum() + "): Неделя числителя - " + isNumeratorWeek + ", Предмет 1 - " + !subject1.isEmpty() + ", Предмет 2 - " + !subject2.isEmpty());
-                                    if (!subject1.isEmpty() && room3.isEmpty()) {
-                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1, room1, " (1 п/г, числитель)"));
-                                    }
-                                    if (!subject1.isEmpty() && !room3.isEmpty()) {
-                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1, room3, " (числитель)"));
-                                    }
-                                    if (!subject2.isEmpty()) {
-                                        scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject2, room2, " (2 п/г, числитель)"));
-                                    }
-                                } else {
-                                    // Проверяем следующую строку ДЛЯ ТОЙ ЖЕ ВРЕМЕННОЙ ПАРЫ, НО ДЛЯ ДРУГОЙ НЕДЕЛИ
-                                    if (rowIterator.hasNext()) {
-                                        Row nextRow = rowIterator.next();
-                                        Cell nextTimeCell = nextRow.getCell(1);
-
-                                        // ЕСЛИ В СЛЕДУЮЩЕЙ СТРОКЕ ВРЕМЯ НЕ УКАЗАНО, ЗНАЧИТ ЭТО РАСПИСАНИЕ НА ДРУГУЮ НЕДЕЛЮ
-                                        if (nextTimeCell == null || nextTimeCell.getCellType() == CellType.BLANK || getStringCellValue(nextTimeCell).trim().isEmpty()) {
-                                            Log.d(TAG, "Следующая строка (" + nextRow.getRowNum() + ") - нет времени. Обрабатываем как другую неделю для той же пары.");
-                                            Cell subject1NextRowCell = nextRow.getCell(3);
-                                            String subject1NextRow = extractSubjectName(getStringCellValue(subject1NextRowCell));
-                                            String room1NextRow = getStringCellValue(nextRow.getCell(4));
-                                            Cell subject2NextRowCell = nextRow.getCell(5);
-                                            String subject2NextRow = extractSubjectName(getStringCellValue(subject2NextRowCell));
-                                            String room2NextRow = getStringCellValue(nextRow.getCell(6));
-                                            String room3NextRow = getStringCellValue(nextRow.getCell(7));
-
-                                            if (!subject1NextRow.isEmpty() && room3NextRow.isEmpty()) {
-                                                scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room1NextRow, " (1 п/г, знаменатель)"));
-                                            }
-                                            if (!subject2NextRow.isEmpty()) {
-                                                scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject2NextRow, room2NextRow, " (2 п/г, знаменатель)"));
-                                            }
-                                            if (!subject1NextRow.isEmpty() && !room3NextRow.isEmpty()) {
-                                                scheduleForDay.append(formatScheduleEntry(startTime, endTime, subject1NextRow, room3NextRow, " (знаменатель)"));
-                                            }
+                            Row nextRowForDenominatorData = sheet.getRow(rowNum + 1);
+                            if (nextRowForDenominatorData != null && (rowNum + 1) <= lastRowOfCurrentDay) {
+                                Cell nextTimeCell = nextRowForDenominatorData.getCell(1);
+                                if (nextTimeCell == null || getStringCellValue(nextTimeCell).trim().isEmpty()) {
+                                    subject1Denominator = extractSubjectName(getStringCellValue(nextRowForDenominatorData.getCell(3)));
+                                    room1Denominator = getStringCellValue(nextRowForDenominatorData.getCell(4));
+                                    subject2Denominator = extractSubjectName(getStringCellValue(nextRowForDenominatorData.getCell(5)));
+                                    room2Denominator = getStringCellValue(nextRowForDenominatorData.getCell(6));
+                                    subject3Denominator = extractSubjectName(getStringCellValue(nextRowForDenominatorData.getCell(7)));
+                                    room3Denominator = getStringCellValue(nextRowForDenominatorData.getCell(8));
+                                    commonRoomDenominator = getStringCellValue(nextRowForDenominatorData.getCell(9));
+                                }
+                            }
+                            if (isNumeratorWeek) {
+                                if (!cellTimeValue.isEmpty()) { // Обрабатываем только если это строка с временем для числителя
+                                    if (!commonRoomNumerator.isEmpty()) {
+                                        Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (числитель, совмещенная): Время='" + currentTimeForPair + "', Предмет='" + getNonEmptySubject(subject1Numerator, subject2Numerator, subject3Numerator) + "', Аудитория='" + commonRoomNumerator + "'");
+                                        scheduleForDay.append(formatScheduleEntry(currentTimeForPair,
+                                                getNonEmptySubject(subject1Numerator, subject2Numerator, subject3Numerator),
+                                                commonRoomNumerator,
+                                                " (совмещенная, числитель)"));
+                                    } else {
+                                        if (!subject1Numerator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (числитель 1 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject1Numerator + "', Аудитория='" + room1Numerator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject1Numerator, room1Numerator, " (1 п/г, числитель)"));
+                                        }
+                                        if (!subject2Numerator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (числитель 2 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject2Numerator + "', Аудитория='" + room2Numerator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject2Numerator, room2Numerator, " (2 п/г, числитель)"));
+                                        }
+                                        if (!subject3Numerator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (числитель 3 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject3Numerator + "', Аудитория='" + room3Numerator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject3Numerator, room3Numerator, " (3 п/г, числитель)"));
                                         }
                                     }
                                 }
                             } else {
-                                Log.w(TAG, "Неправильный формат времени в строке " + currentRow.getRowNum() + ": " + timeValue);
+                                if (!cellTimeValue.isEmpty()) {
+                                    if (!commonRoomDenominator.isEmpty()) {
+                                        Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (знаменатель, совмещенная): Время='" + currentTimeForPair + "', Предмет='" + getNonEmptySubject(subject1Denominator, subject2Denominator, subject3Denominator) + "', Аудитория='" + commonRoomDenominator + "'");
+                                        scheduleForDay.append(formatScheduleEntry(currentTimeForPair,
+                                                getNonEmptySubject(subject1Denominator, subject2Denominator, subject3Denominator),
+                                                commonRoomDenominator,
+                                                " (совмещенная, знаменатель)"));
+                                    } else {
+                                        if (!subject1Denominator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (знаменатель 1 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject1Denominator + "', Аудитория='" + room1Denominator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject1Denominator, room1Denominator, " (1 п/г, знаменатель)"));
+                                        }
+                                        if (!subject2Denominator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (знаменатель 2 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject2Denominator + "', Аудитория='" + room2Denominator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject2Denominator, room2Denominator, " (2 п/г, знаменатель)"));
+                                        }
+                                        if (!subject3Denominator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (знаменатель 3 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject3Denominator + "', Аудитория='" + room3Denominator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject3Denominator, room3Denominator, " (3 п/г, знаменатель)"));
+                                        }
+                                    }
+                                    if (rowIterator.hasNext()) {
+                                        Row skippedRow = rowIterator.next(); // Пропускаем строку с данными знаменателя
+                                        Log.d(DEBUG_PARSE_DETAIL, "Пропускаем строку знаменателя: " + skippedRow.getRowNum());
+                                    }
+                                }
                             }
-                        }
-
-                        // Проверка на начало следующего дня (с учетом смещения, чтобы не выйти за пределы нужного дня)
-                        Calendar nextDayCalendar = Calendar.getInstance();
-                        nextDayCalendar.add(Calendar.DAY_OF_WEEK, dayOffset);
-                        int currentDayForCheck = nextDayCalendar.get(Calendar.DAY_OF_WEEK);
-
-                        Cell nextDayCellForBreak = currentRow.getCell(0);
-                        if (nextDayCellForBreak != null && nextDayCellForBreak.getCellType() == CellType.STRING && nextDayCellForBreak.getStringCellValue().trim().toUpperCase(Locale.getDefault()).startsWith(getNextDayName(currentDayForCheck).toUpperCase(Locale.getDefault()))) {
-                            Log.d(TAG, "Найдено начало следующего дня. Завершаем для " + dayName);
-                            break;
+                        } else {
+                            Log.w(TAG, "parseScheduleForThreeSubgroups: Неправильный формат времени в строке " + rowNum + ": " + currentTimeForPair);
                         }
                     }
                 }
-
-                if (scheduleForDay.toString().equals("Расписание на выбранный день:\n")) {
-                    scheduleForDay.append("На этот день расписаний нет.");
-                }
-
             }
-        } catch (IOException e) {
-            Log.e(TAG, "Ошибка чтения файла: " + e.getMessage());
+            if (scheduleForDay.length() == 0 && foundDaySection) {
+                scheduleForDay.append("На этот день расписаний нет.");
+            } else if (!foundDaySection) {
+                scheduleForDay.append("Расписание на этот день не найдено.");
+            }
+        } catch (IOException | IllegalArgumentException e) {
+            Log.e(TAG, "parseScheduleForThreeSubgroups: Ошибка чтения файла: " + e.getMessage());
             return "Ошибка при чтении файла расписания.";
-        } finally {
-            try {
-                if (fis != null) fis.close();
-                if (workbook != null) workbook.close();
-            } catch (IOException e) {
-                Log.e(TAG, "Ошибка закрытия файла: " + e.getMessage());
-            }
         }
-        Log.d(TAG, "--- Конец обработки расписания на " + dayName + " ---");
-        Log.d(TAG, "Итоговое расписание на " + dayName + ":\n" + scheduleForDay.toString());
+        Log.d(TAG, "parseScheduleForThreeSubgroups: --- Конец обработки расписания на " + dayName + " ---");
+        Log.d(TAG, "parseScheduleForThreeSubgroups: Итоговое расписание на " + dayName + ":\n" + scheduleForDay.toString());
+        return scheduleForDay.toString();
+    }
+    private static String getNonEmptySubject(String sub1, String sub2, String sub3) {
+        if (!sub1.isEmpty()) return sub1;
+        if (!sub2.isEmpty()) return sub2;
+        if (!sub3.isEmpty()) return sub3;
+        return "";
+    }
+
+    private static String parseScheduleForTwoSubgroups(File file, int dayOffset) {
+        StringBuilder scheduleForDay = new StringBuilder();
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DAY_OF_WEEK, dayOffset);
+        int dayOfWeek = calendar.get(Calendar.DAY_OF_WEEK);
+        String dayName = getDayName(dayOfWeek).toUpperCase(Locale.getDefault());
+        boolean isNumeratorWeek = isNumeratorWeek();
+
+        Log.d(TAG, "parseScheduleForTwoSubgroups: Выбранный день: " + dayName + ", Неделя числителя: " + isNumeratorWeek + ", Смещение: " + dayOffset);
+
+        try (FileInputStream fis = new FileInputStream(file); Workbook workbook = WorkbookFactory.create(fis)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            boolean foundDaySection = false;
+            int lastRowOfCurrentDay = -1;
+            Iterator<Row> rowIterator = sheet.iterator();
+            Row currentRow = null;
+            String currentTimeForPair = "";
+            while (rowIterator.hasNext()) {
+                currentRow = rowIterator.next();
+                int rowNum = currentRow.getRowNum();
+                Cell dayCell = currentRow.getCell(0);
+                String currentCellDayValue = (dayCell != null) ? getStringCellValue(dayCell).trim().toUpperCase(Locale.getDefault()) : "";
+
+                Log.d(DEBUG_PARSE_DETAIL, "--- Обработка строки: " + rowNum + " ---");
+                Log.d(DEBUG_PARSE_DETAIL, "Cell(0) value: '" + currentCellDayValue + "'");
+                Log.d(DEBUG_PARSE_DETAIL, "foundDaySection: " + foundDaySection);
+                if (!foundDaySection) {
+                    if (currentCellDayValue.startsWith(dayName)) {
+                        foundDaySection = true;
+                        Log.d(DEBUG_PARSE_DETAIL, "Найдена секция дня: " + dayName + " в строке " + rowNum);
+                        lastRowOfCurrentDay = rowNum + 13;
+                    }
+                }
+                if (foundDaySection) {
+                    if (rowNum > lastRowOfCurrentDay) {
+                        Log.d(TAG, "parseScheduleForTwoSubgroups: Вышли за пределы дня " + dayName + ". Завершаем.");
+                        break;
+                    }
+                    if (!currentCellDayValue.isEmpty() && currentCellDayValue.startsWith(getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()))) {
+                        Log.d(DEBUG_PARSE_DETAIL, "Условие остановки дня сработало в строке " + rowNum + " для дня " + dayName);
+                        Log.d(DEBUG_PARSE_DETAIL, "Причина: Обнаружен следующий день: '" + currentCellDayValue + "'. Ожидался: '" + getNextDayName(dayOfWeek).toUpperCase(Locale.getDefault()) + "'");
+                        break;
+                    }
+                    Cell timeCell = currentRow.getCell(1);
+                    String cellTimeValue = (timeCell != null) ? getStringCellValue(timeCell).trim() : "";
+                    if (!cellTimeValue.isEmpty()) {
+                        currentTimeForPair = cellTimeValue; // Обновляем текущее время пары
+                        Log.d(DEBUG_PARSE_DETAIL, "Найдено новое время пары: '" + currentTimeForPair + "' в строке " + rowNum);
+                    } else {
+                        Log.d(DEBUG_PARSE_DETAIL, "Время пары в строке " + rowNum + " пустое. Используем предыдущее время: '" + currentTimeForPair + "'");
+                    }
+                    if (!currentTimeForPair.isEmpty()) {
+                        String[] times = currentTimeForPair.split(" - ");
+                        if (times.length == 2) {
+                            String startTime = times[0].trim();
+                            String endTime = times[1].trim();
+                            String subject1Numerator = extractSubjectName(getStringCellValue(currentRow.getCell(3)));
+                            String room1Numerator = getStringCellValue(currentRow.getCell(4));
+                            String subject2Numerator = extractSubjectName(getStringCellValue(currentRow.getCell(5)));
+                            String room2Numerator = getStringCellValue(currentRow.getCell(6));
+                            String commonRoomNumerator = getStringCellValue(currentRow.getCell(7));
+                            String subject1Denominator = "";
+                            String room1Denominator = "";
+                            String subject2Denominator = "";
+                            String room2Denominator = "";
+                            String commonRoomDenominator = "";
+
+                            Row nextRowForDenominatorData = sheet.getRow(rowNum + 1);
+                            if (nextRowForDenominatorData != null && rowNum + 1 <= lastRowOfCurrentDay) {
+                                Cell nextTimeCell = nextRowForDenominatorData.getCell(1);
+                                // Если следующая строка не является началом новой пары (её время пустое)
+                                if (nextTimeCell == null || getStringCellValue(nextTimeCell).trim().isEmpty()) {
+                                    subject1Denominator = extractSubjectName(getStringCellValue(nextRowForDenominatorData.getCell(3)));
+                                    room1Denominator = getStringCellValue(nextRowForDenominatorData.getCell(4));
+                                    subject2Denominator = extractSubjectName(getStringCellValue(nextRowForDenominatorData.getCell(5)));
+                                    room2Denominator = getStringCellValue(nextRowForDenominatorData.getCell(6));
+                                    commonRoomDenominator = getStringCellValue(nextRowForDenominatorData.getCell(7));
+                                }
+                            }
+                            if (isNumeratorWeek) {
+                                if (!cellTimeValue.isEmpty()) { // Только если это строка с временем для числителя
+                                    if (!commonRoomNumerator.isEmpty()) {
+                                        Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (числитель, совмещенная): Время='" + currentTimeForPair + "', Предмет='" + (subject1Numerator.isEmpty() ? subject2Numerator : subject1Numerator) + "', Аудитория='" + commonRoomNumerator + "'");
+                                        scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject1Numerator.isEmpty() ? subject2Numerator : subject1Numerator, commonRoomNumerator, " (совмещенная, числитель)"));
+                                    } else {
+                                        if (!subject1Numerator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (числитель 1 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject1Numerator + "', Аудитория='" + room1Numerator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject1Numerator, room1Numerator, " (1 п/г, числитель)"));
+                                        }
+                                        if (!subject2Numerator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (числитель 2 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject2Numerator + "', Аудитория='" + room2Numerator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject2Numerator, room2Numerator, " (2 п/г, числитель)"));
+                                        }
+                                    }
+                                }
+                            } else {
+                                if (!cellTimeValue.isEmpty()) { // Это строка, где указано время пары (напр., 8:30)
+                                    if (!commonRoomDenominator.isEmpty()) {
+                                        Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (знаменатель, совмещенная): Время='" + currentTimeForPair + "', Предмет='" + (subject1Denominator.isEmpty() ? subject2Denominator : subject1Denominator) + "', Аудитория='" + commonRoomDenominator + "'");
+                                        scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject1Denominator.isEmpty() ? subject2Denominator : subject1Denominator, commonRoomDenominator, " (совмещенная, знаменатель)"));
+                                    } else {
+                                        if (!subject1Denominator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (знаменатель 1 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject1Denominator + "', Аудитория='" + room1Denominator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject1Denominator, room1Denominator, " (1 п/г, знаменатель)"));
+                                        }
+                                        if (!subject2Denominator.isEmpty()) {
+                                            Log.d(DEBUG_PARSE_DETAIL, "Добавляем запись (знаменатель 2 п/г): Время='" + currentTimeForPair + "', Предмет='" + subject2Denominator + "', Аудитория='" + room2Denominator + "'");
+                                            scheduleForDay.append(formatScheduleEntry(currentTimeForPair, subject2Denominator, room2Denominator, " (2 п/г, знаменатель)"));
+                                        }
+                                    }
+                                    if (rowIterator.hasNext()) {
+                                        Row skippedRow = rowIterator.next(); // Пропускаем строку с данными знаменателя
+                                        Log.d(DEBUG_PARSE_DETAIL, "Пропускаем строку знаменателя: " + skippedRow.getRowNum());
+                                    }
+                                }
+                            }
+                        } else {
+                            Log.w(TAG, "parseScheduleForTwoSubgroups: Неправильный формат времени в строке " + rowNum + ": " + currentTimeForPair);
+                        }
+                    }
+                }
+            }
+
+            if (scheduleForDay.length() == 0 && foundDaySection) {
+                scheduleForDay.append("На этот день расписаний нет.");
+            } else if (!foundDaySection) {
+                scheduleForDay.append("Расписание на этот день не найдено.");
+            }
+
+        } catch (IOException | IllegalArgumentException e) {
+            Log.e(TAG, "parseScheduleForTwoSubgroups: Ошибка чтения файла: " + e.getMessage());
+            return "Ошибка при чтении файла расписания.";
+        }
+        Log.d(TAG, "parseScheduleForTwoSubgroups: --- Конец обработки расписания на " + dayName + " ---");
+        Log.d(TAG, "parseScheduleForTwoSubgroups: Итоговое расписание на " + dayName + ":\n" + scheduleForDay.toString());
         return scheduleForDay.toString();
     }
 
@@ -280,47 +393,122 @@ public class ExcelParser {
         return weekNumber % 2 == 0; // Четные недели (начиная с 0) - числитель
     }
 
-
     private static String getNextDayName(int currentDayOfWeek) {
-        int nextDayOfWeek = (currentDayOfWeek == Calendar.SUNDAY) ? Calendar.MONDAY : currentDayOfWeek + 1;
+        int nextDayOfWeek = (currentDayOfWeek == Calendar.SATURDAY) ? Calendar.SUNDAY : currentDayOfWeek + 1; // Исправлено для субботы
         return getDayName(nextDayOfWeek);
     }
 
+    private static String getDayName(int dayOfWeek) {
+        switch (dayOfWeek) {
+            case Calendar.MONDAY: return "ПОНЕДЕЛЬНИК";
+            case Calendar.TUESDAY: return "ВТОРНИК";
+            case Calendar.WEDNESDAY: return "СРЕДА";
+            case Calendar.THURSDAY: return "ЧЕТВЕРГ";
+            case Calendar.FRIDAY: return "ПЯТНИЦА";
+            case Calendar.SATURDAY: return "СУББОТА";
+            case Calendar.SUNDAY: return "ВОСКРЕСЕНЬЕ";
+            default: return "";
+        }
+    }
+
+
+    private static String formatScheduleEntry(String time, String subject, String room, String subgroupInfo) {
+        // Если предмет и аудитория пустые, не добавляем запись.
+        if (subject.isEmpty() && room.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder entry = new StringBuilder();
+
+        // Добавляем время с информацией о подгруппе
+        entry.append("Время: ").append(time);
+        if (!subgroupInfo.isEmpty()) {
+            entry.append(subgroupInfo); // subgroupInfo уже включает скобки и пробел
+        }
+        entry.append("\n"); // Новая строка после времени
+
+        // Добавляем предмет
+        entry.append("Предмет: ").append(subject).append("\n");
+
+        // Добавляем аудиторию (только если она не пустая)
+        if (!room.isEmpty()) {
+            entry.append("Аудитория: ").append(room).append("\n\n");
+        }
+        else{
+            entry.append("\n");
+        }
+
+        return entry.toString();
+    }
+
+    private static String extractSubjectName(String cellValue) {
+
+        Pattern pattern = Pattern.compile("\\s*\\([^)]*\\)\\s*");
+        Matcher matcher = pattern.matcher(cellValue);
+        String result = matcher.replaceAll("").trim();
+
+        // Дополнительно удаляем " (ЛК)", " (ПР)", " (ЛАБ)"
+        result = result.replaceAll("\\s*\\(ЛК\\)", "").trim();
+        result = result.replaceAll("\\s*\\(ПР\\)", "").trim();
+        result = result.replaceAll("\\s*\\(ЛАБ\\)", "").trim();
+
+        return result;
+    }
+
+
     private static String getStringCellValue(Cell cell) {
         if (cell == null) return "";
-        CellType cellType = cell.getCellType();
+        try {
+            CellType cellType = cell.getCellType();
+            if (cellType == CellType.STRING) return cell.getStringCellValue().trim();
+            if (cellType == CellType.NUMERIC) {
+
+                if (DateUtil.isCellDateFormatted(cell)) {
+                    // Получаем дату, затем форматируем только время
+                    java.util.Date date = cell.getDateCellValue();
+                    java.text.SimpleDateFormat timeFormat = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault()); // Изменено на HH:mm
+                    return timeFormat.format(date);
+                } else {
+                    // Если это просто число, возвращаем его строковое представление
+                    return String.valueOf((int) cell.getNumericCellValue());
+                }
+            }
+            if (cellType == CellType.BOOLEAN) return String.valueOf(cell.getBooleanCellValue());
+            if (cellType == CellType.FORMULA) {
+                try {
+                    return getStringCellValue(cell.getCachedFormulaResultType(), cell);
+                } catch (Exception e) {
+                    FormulaEvaluator evaluator = cell.getSheet().getWorkbook().getCreationHelper().createFormulaEvaluator();
+                    CellValue cellValue = evaluator.evaluate(cell);
+                    return getStringCellValue(cellValue.getCellType(), cellValue);
+                }
+            }
+            return "";
+        } catch (Exception e) {
+            Log.e(TAG, "getStringCellValue: Ошибка получения значения ячейки: " + e.getMessage() + " для ячейки в строке " + cell.getRowIndex() + ", колонке " + cell.getColumnIndex());
+            return "";
+        }
+    }
+    private static String getStringCellValue(CellType cellType, Cell cell) {
         if (cellType == CellType.STRING) return cell.getStringCellValue().trim();
-        if (cellType == CellType.NUMERIC) return String.valueOf((int) cell.getNumericCellValue());
+        if (cellType == CellType.NUMERIC) {
+            if (DateUtil.isCellDateFormatted(cell)) {
+                java.util.Date date = cell.getDateCellValue();
+                java.text.SimpleDateFormat timeFormat = new java.text.SimpleDateFormat("HH:mm", Locale.getDefault()); // Изменено на HH:mm
+                return timeFormat.format(date);
+            } else {
+                return String.valueOf((int) cell.getNumericCellValue());
+            }
+        }
+        if (cellType == CellType.BOOLEAN) return String.valueOf(cell.getBooleanCellValue());
         return "";
     }
-    
-
-
-    public static String getDayName(int dayOfWeek) {
-        return switch (dayOfWeek) {
-            case Calendar.MONDAY -> "Понедельник";
-            case Calendar.TUESDAY -> "Вторник";
-            case Calendar.WEDNESDAY -> "Среда";
-            case Calendar.THURSDAY -> "Четверг";
-            case Calendar.FRIDAY -> "Пятница";
-            case Calendar.SATURDAY -> "Суббота";
-            case Calendar.SUNDAY -> "Воскресенье";
-            default -> "";
-        };
-    }
-
-    private static String extractSubjectName(String subjectWithTeacher) {
-        Matcher matcher = Pattern.compile("^([^\\(]+)").matcher(subjectWithTeacher.trim());
-        return matcher.find() ? matcher.group(1).trim() : subjectWithTeacher.trim();
-    }
-
-    private static String formatScheduleEntry(String startTime, String endTime, String subject, String room, String group) {
-        return "Время: " + startTime + " - " + endTime + group + "\n" +
-                "Предмет: " + subject + "\n" +
-                "Аудитория: " + room + "\n\n";
-    }
-
-    private static String getNextDayNameForParser(int dayOfWeek) {
-        return getDayName(dayOfWeek % 7 + 1); // Cyclic next day (Sun -> Mon)
+    private static String getStringCellValue(CellType cellType, CellValue cellValue) {
+        if (cellType == CellType.STRING) return cellValue.getStringValue().trim();
+        if (cellType == CellType.NUMERIC) {
+            return String.valueOf((int) cellValue.getNumberValue());
+        }
+        if (cellType == CellType.BOOLEAN) return String.valueOf(cellValue.getBooleanValue());
+        return "";
     }
 }

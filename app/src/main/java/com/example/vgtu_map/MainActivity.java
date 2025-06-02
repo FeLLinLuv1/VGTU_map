@@ -2,9 +2,11 @@ package com.example.vgtu_map;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.os.Environment;
 import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -13,10 +15,10 @@ import android.widget.Toast;
 import androidx.appcompat.app.AppCompatActivity;
 
 import java.io.File;
-import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements DownloadAndParseScheduleTask.ScheduleDownloadListener {
 
+    private AutoCompleteTextView facultySpinner;
     private EditText groupEditText; // Поле для ввода названия группы
     private Button searchButton;
     private Button todayButton; // Кнопка "Сегодня"
@@ -28,12 +30,14 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
     private TextView dateHeader; // Заголовок для отображения выбранной даты
     private Button teacherButton;
     private Button openMapButton;
+    private String selectedFacultyUrl;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        facultySpinner = findViewById(R.id.facultySpinner);
         groupEditText = findViewById(R.id.groupEditText);
         searchButton = findViewById(R.id.saveGroupButton); // Используем прежний ID, но меняем смысл
         todayButton = findViewById(R.id.todayButton);
@@ -47,6 +51,48 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
 
         searchButton.setText("Поиск расписания"); // Изменяем текст кнопки
         scheduleTextView.setText("Результат поиска расписания будет здесь"); // Начальный текст
+
+        // Настройка Spinner для выбора факультета
+        ArrayAdapter<CharSequence> adapter = ArrayAdapter.createFromResource(
+                this,
+                R.array.faculty_array,
+                android.R.layout.simple_dropdown_item_1line
+        );
+        facultySpinner.setAdapter(adapter);
+
+        facultySpinner.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                String selectedFaculty = (String) parent.getItemAtPosition(position);
+                if (selectedFaculty.equals("Факультет СПО")) {
+                    selectedFacultyUrl = "https://cchgeu.ru/studentu/schedule/spo/";
+                } else if (selectedFaculty.equals("Факультет ДТФ")) {
+                    selectedFacultyUrl = "https://cchgeu.ru/studentu/schedule/dtf/";
+                } else {
+                    selectedFacultyUrl = null;
+                }
+                Log.d("MainActivity", "Выбран факультет: " + selectedFaculty + ", URL: " + selectedFacultyUrl);
+            }
+        });
+
+        searchButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                String enteredGroupName = groupEditText.getText().toString().trim().toUpperCase();
+                if (!enteredGroupName.isEmpty() && selectedFacultyUrl != null) {
+                    currentGroupName = enteredGroupName; // Сохраняем название группы
+                    // Запускаем DownloadAndParseScheduleTask, передавая контекст, название группы и URL
+                    DownloadAndParseScheduleTask task = new DownloadAndParseScheduleTask(MainActivity.this, MainActivity.this);
+                    task.execute(enteredGroupName, selectedFacultyUrl);
+                    Toast.makeText(MainActivity.this, "Поиск расписания для группы " + enteredGroupName + "...", Toast.LENGTH_SHORT).show();
+                    scheduleTextView.setText("Идет поиск и скачивание расписания..."); // Обновляем текст
+                } else if (enteredGroupName.isEmpty()) {
+                    Toast.makeText(MainActivity.this, "Пожалуйста, введите название группы", Toast.LENGTH_LONG).show();
+                } else {
+                    Toast.makeText(MainActivity.this, "Пожалуйста, выберите факультет", Toast.LENGTH_LONG).show();
+                }
+            }
+        });
 
         teacherButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -65,29 +111,6 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
                 overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out); // Опциональная анимация
             }
         });
-
-        searchButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String enteredGroupName = groupEditText.getText().toString().trim();
-                if (!enteredGroupName.isEmpty()) {
-                    currentGroupName = enteredGroupName; // Сохраняем название группы
-                    // Запускаем DownloadAndParseScheduleTask, передавая контекст и название группы
-                    DownloadAndParseScheduleTask task = new DownloadAndParseScheduleTask(MainActivity.this, MainActivity.this);
-                    task.execute(enteredGroupName);
-                    Toast.makeText(MainActivity.this, "Поиск расписания для группы " + enteredGroupName + "...", Toast.LENGTH_SHORT).show();
-                    scheduleTextView.setText("Идет поиск и скачивание расписания..."); // Обновляем текст
-                } else {
-                    Toast.makeText(MainActivity.this, "Пожалуйста, введите название группы", Toast.LENGTH_LONG).show();
-                }
-            }
-        });
-
-
-
-
-
-
 
         todayButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -218,21 +241,6 @@ public class MainActivity extends AppCompatActivity implements DownloadAndParseS
         }).start();
     }
 
-
-    private void displaySchedule(List<List<String>> data) {
-        StringBuilder sb = new StringBuilder("Расписание:\n");
-        if (data != null && !data.isEmpty()) {
-            for (List<String> row : data) {
-                for (String cell : row) {
-                    sb.append(cell).append("\t\t"); // Добавляем табуляцию для разделения ячеек
-                }
-                sb.append("\n");
-            }
-        } else {
-            sb.append("Данные расписания отсутствуют или не удалось обработать.");
-        }
-        scheduleTextView.setText(sb.toString());
-    }
 
     @Override
     public void onError(final String message) {

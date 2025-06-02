@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">VGTU_map</string>
+    <string-array name="faculty_array">
+        <item>Факультет СПО</item>
+        <item>Факультет ДТФ</item>
+    </string-array>
 </resources>
